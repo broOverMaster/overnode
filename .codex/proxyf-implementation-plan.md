@@ -1,7 +1,7 @@
 # Overgate HTTP proxy implementation plan
 
-Status: stage 1 implemented and prepared for commit at the user's request.
-Stage 2 has not started; wait for explicit authorization to proceed.
+Status: stage 1 committed as 82dda55; stage 2 implemented and prepared for
+commit at the user's request. Do not start stage 3 before explicit authorization.
 Target branch: `f/proxyf`.
 
 Execution rule: stop after each stage and wait for explicit user confirmation
@@ -115,15 +115,21 @@ and exits successfully. No route is implemented or accepted at this stage.
 
 ## Stage 2 — Parse and classify proxy requests
 
-- [ ] Parse request-target and validate its form before dispatch.
-- [ ] Separate normalized routing hostname, original authority, destination port,
+- [x] Parse request-target and validate its form before dispatch.
+- [x] Separate normalized routing hostname, original authority, destination port,
   path, and query so dialing changes do not corrupt request semantics.
-- [ ] Implement exact local matching and label-aware TLD classification.
-- [ ] Reject origin-form with 400 and special-route CONNECT with 405.
+- [x] Implement exact local matching and label-aware TLD classification.
+- [x] Reject origin-form with 400 and special-route CONNECT with 405.
   Supply a suitable Allow header for 405, listing supported ordinary methods.
-- [ ] Test mixed case, trailing dots, explicit/default ports, IPv4/IPv6 literals,
+- [x] Test mixed case, trailing dots, explicit/default ports, IPv4/IPv6 literals,
   lookalike suffixes, malformed URLs, conflicting Host headers, and unsupported
   forms. Confirm there is no fallback to Host or DNS for malformed key routes.
+
+Stage 2 acceptance: parser, handler and raw HTTP socket tests cover the cases
+above. No outbound transport exists yet; invalid-key names are classified as
+overlay routes, with key validation deferred to stage 5. Eligible requests
+receive 501; origin-form receives 400; special-route CONNECT receives 405.
+`make check` and `go test -race ./overgate/...` passed.
 
 ## Stage 3 — Make local and direct internet HTTP work
 

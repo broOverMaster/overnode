@@ -40,7 +40,7 @@ func (server *Server) serve(ctx context.Context, listener net.Listener) error {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	httpServer := &http.Server{
-		Handler:           http.HandlerFunc(pendingHandler),
+		Handler:           server,
 		ReadHeaderTimeout: 10 * time.Second,
 		IdleTimeout:       90 * time.Second,
 		MaxHeaderBytes:    1 << 20,
@@ -65,9 +65,4 @@ func (server *Server) serve(ctx context.Context, listener net.Listener) error {
 	}
 	server.logger.Info("HTTP proxy stopped")
 	return nil
-}
-
-// pendingHandler обозначает отсутствие маршрутизации до следующего этапа.
-func pendingHandler(w http.ResponseWriter, _ *http.Request) {
-	http.Error(w, "proxy routing is not implemented", http.StatusNotImplemented)
 }

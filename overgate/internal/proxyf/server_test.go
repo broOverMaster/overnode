@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"net"
 	"net/http"
+	"net/url"
 	"strings"
 	"testing"
 	"time"
@@ -57,10 +58,14 @@ func TestLifecycle(t *testing.T) {
 	defer cancel()
 	done := make(chan error, 1)
 	go func() { done <- server.serve(ctx, listener) }()
-	transport := &http.Transport{Proxy: nil}
+	proxyURL, err := url.Parse("http://" + listener.Addr().String())
+	if err != nil {
+		t.Fatal(err)
+	}
+	transport := &http.Transport{Proxy: http.ProxyURL(proxyURL)}
 	defer transport.CloseIdleConnections()
 	client := &http.Client{Transport: transport, Timeout: time.Second}
-	resp, err := client.Get("http://" + listener.Addr().String() + "/")
+	resp, err := client.Get("http://local.overspace/")
 	if err != nil {
 		t.Fatal(err)
 	}
