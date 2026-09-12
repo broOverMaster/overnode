@@ -66,7 +66,7 @@ func TestInvalidTargets(t *testing.T) {
 }
 
 func TestHandlerStatus(t *testing.T) {
-	s, err := New(Config{ListenOn: ":2080"}, testLogger())
+	s, err := New(Config{ListenOn: ":2080", HTTPProxy: "http://127.0.0.1:1"}, testLogger())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -75,7 +75,7 @@ func TestHandlerStatus(t *testing.T) {
 		code        int
 	}{
 		{"GET", "/", 400}, {"OPTIONS", "*", 400}, {"GET", "http://example.com/", 501},
-		{"GET", "http://local.overspace/", 501}, {"GET", "http://invalid.ygg/", 501},
+		{"GET", "http://local.overspace/", 503}, {"GET", "http://invalid.ygg/", 501},
 		{"CONNECT", "example.com:443", 501}, {"CONNECT", "local.overspace:443", 405},
 		{"CONNECT", "invalid.ygg:443", 405}, {"CONNECT", "invalid.overspace:443", 405},
 	} {
@@ -119,7 +119,7 @@ func TestWireRequestForms(t *testing.T) {
 		code int
 	}{
 		{"GET / HTTP/1.1", 400},
-		{"GET http://local.overspace/a%2Fb?q=1 HTTP/1.1", 501},
+		{"GET http://local.overspace/a%2Fb?q=1 HTTP/1.1", 503},
 		{"CONNECT local.overspace:443 HTTP/1.1", 405},
 		{"CONNECT example.com:443 HTTP/1.1", 501},
 	} {

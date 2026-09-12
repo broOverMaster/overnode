@@ -65,7 +65,7 @@ func TestLifecycle(t *testing.T) {
 	transport := &http.Transport{Proxy: http.ProxyURL(proxyURL)}
 	defer transport.CloseIdleConnections()
 	client := &http.Client{Transport: transport, Timeout: time.Second}
-	resp, err := client.Get("http://local.overspace/")
+	resp, err := client.Get("http://key.ygg/")
 	if err != nil {
 		t.Fatal(err)
 	}

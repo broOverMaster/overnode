@@ -1,7 +1,8 @@
 # Overgate HTTP proxy implementation plan
 
-Status: stage 1 committed as 82dda55; stage 2 implemented and prepared for
-commit at the user's request. Do not start stage 3 before explicit authorization.
+Status: stage 1 committed as 82dda55; stage 2 committed as 091e020.
+Stage 3 closed at the user's request and prepared for commit.
+Stage 4 has not started; wait for explicit authorization to proceed.
 Target branch: `f/proxyf`.
 
 Execution rule: stop after each stage and wait for explicit user confirmation
@@ -133,22 +134,51 @@ receive 501; origin-form receives 400; special-route CONNECT receives 405.
 
 ## Stage 3 — Make local and direct internet HTTP work
 
-- [ ] Instantiate long-lived transports once with bounded dial/header timeouts;
+- [x] Instantiate long-lived transports once with bounded dial/header timeouts;
   cancel outbound operations and close idle connections on all exit paths.
-- [ ] Use http.Transport.RoundTrip for forwarding; clear outbound RequestURI.
+- [x] Use http.Transport.RoundTrip for forwarding; clear outbound RequestURI.
   Do not use a redirect-following client.
-- [ ] Preserve method, escaped path, query, body, status, and end-to-end headers.
+- [x] Preserve method, escaped path, query, body, status, and end-to-end headers.
   Strip hop-by-hop headers in both directions, including headers nominated by
   Connection; keep proxy credentials from leaking to origin servers.
-- [ ] Stream request/response bodies with cancellation and close response bodies.
+- [x] Stream request/response bodies with cancellation and close response bodies.
   Define trailer handling explicitly; do not silently break HTTP framing.
-- [ ] For local, connect to local_site and set Host to local.overspace. Do not
+- [x] For local, connect to local_site and set Host to local.overspace. Do not
   resolve local.overspace through DNS or send it through the internet proxy.
-- [ ] For internet without an upstream, dial the target directly, with no
+- [x] For internet without an upstream, dial the target directly, with no
   implicit environment proxy.
-- [ ] Test GET and POST against controlled origins, redirects without following
+- [x] Test GET and POST against controlled origins, redirects without following
   them, body integrity, Host/path/query, backend failures, and route isolation.
-- [ ] Run acceptance gate A below. Both routes must work before moving on.
+- [x] Run acceptance gate A below. Both routes must work before moving on.
+
+Implementation uses httputil.ReverseProxy with explicit Rewrite and dedicated
+long-lived http.Transports, preserving the forward-proxy request contract.
+The standard helper handles streaming, response trailers and hop-by-hop header
+removal. Request trailers share the incoming trailer map so EOF-populated values
+are available to the outbound transport. No automatic redirect following or
+environment proxy selection is used. Upstream-configured internet remains 501
+until stage 4, preventing accidental direct fallback.
+
+Stage 3 evidence: `make check` and `go test -race ./overgate/...` passed.
+Real binary acceptance ran oversite at 127.0.0.1:28081 and overgate at
+127.0.0.1:28080: local and direct internet responses matched the static site;
+origin-form returned 400; both services exited successfully on SIGTERM.
+Fixture tests verify Host/method/path/query/body, both trailer directions,
+hop-by-hop removal, redirects, 502/recovery, 504 and shutdown cancellation.
+Default internet port 80 is verified by recording the transport dial target
+and forwarding it to a controlled ephemeral-port origin. Test processes stopped
+after acceptance. Gates B/C remain pending.
+
+Additional user-requested Compose acceptance setup: base Compose defaults the
+site bind source to `${PWD}/.local/var/www/html`. Base Compose owns service
+wiring: both services use the backend network; oversite listens on :8000 and
+overgate uses http://oversite:8000 as local_site. The user explicitly removed
+oversite's loopback-only restriction; its standalone default stays loopback.
+The ignored override only publishes 127.0.0.1:2080:2080 and is documented in
+overgate/README.md. After the final backend-network change, `make check` and
+`make up` passed; local.overspace and oversite:8000 through the proxy returned
+200. External HTTP example.com was also verified before that network change.
+Containers were left running for user acceptance. HTTPS remains stage 4 work.
 
 ## Stage 4 — Add internet proxy chaining and CONNECT
 
@@ -205,10 +235,9 @@ receive 501; origin-form receives 400; special-route CONNECT receives 405.
   provide an HTTP endpoint on port 80 plus another port for explicit-port tests.
 - [ ] Include a controlled internet HTTP/HTTPS origin and upstream HTTP proxy
   with connection/request evidence to prove direct versus chained behavior.
-- [ ] Include oversite with a known static response. Its listener is loopback-only:
-  a separate container cannot reach it via backend DNS alone. Use a shared
-  network namespace with overgate for the container fixture, or run both on host
-  loopback for the local acceptance stage. Do not relax oversite's contract.
+- [ ] Include oversite with a known static response. Use the backend network
+  and http://oversite:8000, with oversite listening on :8000. Its loopback-only
+  restriction was explicitly removed by the user during stage 3 acceptance.
 - [ ] Publish only client-facing test ports on host loopback. Keep fixture keys
   distinct from real identities; preserve useful failure logs before teardown.
 - [ ] Run gate C. If Docker/Yggstack is unavailable, report overlay acceptance
@@ -291,8 +320,8 @@ Stage 1 verification: `make check` passed after changing the default listener
 to `:2080`. `go test -race ./overgate/...` passed for the lifecycle implementation
 before that default-only adjustment. Tests cover the temporary 501 response,
 listener closure on cancellation, listen/serve failures, configuration validation,
-help, and environment/CLI precedence. Gates A/B/C remain pending because routing
-has not been implemented. No Docker acceptance services have been started.
+help, and environment/CLI precedence. At stage 1, gates A/B/C were pending;
+current gate A and Docker acceptance evidence is recorded under stage 3 above.
 
 The user-created `.local/etc/overgate.config.yaml` is currently empty and is not
 part of the implemented configuration examples; preserve it as local user work.

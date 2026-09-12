@@ -6,6 +6,11 @@ services:
     build:
       context: .
       dockerfile: overgate/Dockerfile
+    environment:
+      PROXYF__LISTEN_ON: ":2080"
+      PROXYF__LOCAL_SITE: http://oversite:8000
+    depends_on:
+      - oversite
     networks: [backend]
 
   oversite:
@@ -13,6 +18,7 @@ services:
       context: .
       dockerfile: oversite/Dockerfile
     environment:
+      HTTPD__LISTEN_ON: ":8000"
       HTTPD__SITE_PATH: /site
     volumes:
       - oversite-site:/site:ro
@@ -26,4 +32,4 @@ volumes:
     driver_opts:
       type: none
       o: bind
-      device: ${OVERSITE_SITE_PATH:-}
+      device: ${OVERSITE_SITE_PATH:-${PWD}/.local/var/www/html}

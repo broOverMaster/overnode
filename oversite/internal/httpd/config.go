@@ -1,4 +1,4 @@
-// Пакет httpd обслуживает статические файлы по loopback HTTP-адресу.
+// Пакет httpd обслуживает статические файлы по заданному HTTP-адресу.
 package httpd
 
 import (
@@ -24,13 +24,13 @@ type Config struct {
 // Schema возвращает внешние параметры HTTP-компонента.
 func Schema() []schema.Field {
 	return []schema.Field{
-		schema.String("httpd.listen_on", defaultListenOn, "HTTP loopback listen address"),
+		schema.String("httpd.listen_on", defaultListenOn, "HTTP listen address"),
 		schema.String("httpd.site_path", "", "required static site directory"),
 		schema.String("httpd.access_log_path", "", "optional HTTP access log file path"),
 	}
 }
 
-// Validate проверяет адрес loopback и существующий каталог со статикой.
+// Validate проверяет адрес слушателя и существующий каталог со статикой.
 func (configuration Config) Validate() error {
 	if _, err := canonicalListenOn(configuration.ListenOn); err != nil {
 		return err
@@ -53,13 +53,16 @@ func canonicalListenOn(value string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("httpd.listen_on %q must be a host:port pair", value)
 	}
-	address, err := netip.ParseAddr(host)
-	if err != nil || !address.IsLoopback() {
-		return "", fmt.Errorf("httpd.listen_on %q must use a loopback IP address", value)
+	if host != "" {
+		address, err := netip.ParseAddr(host)
+		if err != nil {
+			return "", fmt.Errorf("httpd.listen_on %q must use an IP address or empty host", value)
+		}
+		host = address.String()
 	}
 	number, err := strconv.ParseUint(port, 10, 16)
 	if err != nil {
 		return "", fmt.Errorf("httpd.listen_on %q must use a numeric port between 0 and 65535", value)
 	}
-	return net.JoinHostPort(address.String(), strconv.FormatUint(number, 10)), nil
+	return net.JoinHostPort(host, strconv.FormatUint(number, 10)), nil
 }

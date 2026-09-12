@@ -21,8 +21,8 @@ func TestNewValidatesConfiguration(t *testing.T) {
 		"empty site path":     {ListenOn: "127.0.0.1:0"},
 		"missing site path":   {ListenOn: "127.0.0.1:0", SitePath: filepath.Join(directory, "missing")},
 		"site path is a file": {ListenOn: "127.0.0.1:0", SitePath: writeSiteFile(t, directory, "file.txt", "content")},
-		"wildcard address":    {ListenOn: "0.0.0.0:8000", SitePath: directory},
-		"public address":      {ListenOn: "192.0.2.1:8000", SitePath: directory},
+		"invalid IP":          {ListenOn: "999.0.0.1:8000", SitePath: directory},
+		"port overflow":       {ListenOn: ":65536", SitePath: directory},
 		"name address":        {ListenOn: "localhost:8000", SitePath: directory},
 		"missing port":        {ListenOn: "127.0.0.1", SitePath: directory},
 		"non-numeric port":    {ListenOn: "127.0.0.1:http", SitePath: directory},
@@ -34,10 +34,10 @@ func TestNewValidatesConfiguration(t *testing.T) {
 		})
 	}
 
-	for _, address := range []string{"127.0.0.1:0", "127.1.2.3:65535", "[::1]:8000"} {
+	for _, address := range []string{"127.0.0.1:0", "127.1.2.3:65535", "[::1]:8000", ":8000", "0.0.0.0:8000", "[::]:8000", "192.0.2.1:8000", "192.168.1.1:8000", "[2001:db8::1]:8000"} {
 		t.Run(address, func(t *testing.T) {
 			if _, err := New(Config{ListenOn: address, SitePath: directory}, logger); err != nil {
-				t.Fatalf("expected valid loopback address: %v", err)
+				t.Fatalf("expected valid listen address: %v", err)
 			}
 		})
 	}

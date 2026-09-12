@@ -67,8 +67,17 @@ func parseTarget(r *http.Request) (target, error) {
 	return t, nil
 }
 
-// ServeHTTP классифицирует запрос; пересылка добавляется следующими этапами.
+// ServeHTTP классифицирует запрос и выбирает обработчик маршрута.
 func (server *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	server.mu.Lock()
+	if server.stopping {
+		server.mu.Unlock()
+		http.Error(w, "proxy stopping", 503)
+		return
+	}
+	server.requests.Add(1)
+	server.mu.Unlock()
+	defer server.requests.Done()
 	t, err := parseTarget(r)
 	if err != nil {
 		http.Error(w, "invalid proxy request", http.StatusBadRequest)
@@ -80,5 +89,24 @@ func (server *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "CONNECT is only supported for internet", http.StatusMethodNotAllowed)
 		return
 	}
-	http.Error(w, "proxy forwarding is not implemented", http.StatusNotImplemented)
+	if r.Method == http.MethodConnect {
+		http.Error(w, "CONNECT forwarding is not implemented", 501)
+		return
+	}
+	switch t.route {
+	case routeLocal:
+		if server.configuration.LocalSite == "" {
+			http.Error(w, "local route is not configured", 503)
+			return
+		}
+		server.forward(w, r, t)
+	case routeInternet:
+		if server.configuration.HTTPProxy != "" {
+			http.Error(w, "upstream proxy forwarding is not implemented", 501)
+			return
+		}
+		server.forward(w, r, t)
+	default:
+		http.Error(w, "overlay forwarding is not implemented", 501)
+	}
 }
