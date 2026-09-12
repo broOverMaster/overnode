@@ -1,8 +1,8 @@
 # Overgate HTTP proxy implementation plan
 
 Status: stage 1 committed as 82dda55; stage 2 committed as 091e020.
-Stage 3 closed at the user's request and prepared for commit.
-Stage 4 has not started; wait for explicit authorization to proceed.
+Stage 3 committed as 6b1407d. Stage 4 closed at the user's request and
+prepared for commit. Wait for explicit authorization before stage 5.
 Target branch: `f/proxyf`.
 
 Execution rule: stop after each stage and wait for explicit user confirmation
@@ -36,7 +36,7 @@ fallback. Parse the hostname separately from the port before classifying it.
 - `overspace` remains a distinct route even while sharing key resolution and
   transport with `ygg`. Human-readable name resolution is deferred as T-2.
 - Use the agreed configuration prefix `proxyf`: `proxyf.http_proxy`,
-  `proxyf.yggstack_proxy`, and `proxyf.local_site`, matching the package name.
+  `proxyf.yggstack`, and `proxyf.local_site`, matching the package name.
 - Follow the existing oversite lifecycle: entrypoint-owned configuration,
   logging and signal context; app.Run constructs the component with New and
   calls its blocking Run(ctx); context cancellation closes the server.
@@ -56,9 +56,11 @@ implementation stage starts. They are not previously agreed requirements.
 - Compare DNS hostnames case-insensitively and normalize a single trailing dot.
   Match whole TLD labels; `x.ygg.example` and `notlocal.overspace` must not be
   mistaken for `ygg` and `local`, respectively.
-- Represent `proxyf.http_proxy` as an `http://host:port` URL,
-  `proxyf.yggstack_proxy` as a `socks5://host:port` URL, and
-  `proxyf.local_site` as an `http://host[:port]` URL without path/query/userinfo.
+- Represent `proxyf.http_proxy` as `host:port` without a URL scheme (explicit
+  user decision during stage 4); construct the HTTP transport URL internally.
+  Represent `proxyf.yggstack` as `host:port` for SOCKS5, and
+  `proxyf.local_site` as `host:port` without a scheme, with an explicit port
+  (user decision during stage 4). HTTP endpoint URLs are constructed internally.
   Reject unsupported forms at startup. Upstream authentication is outside this
   initial scope unless explicitly added during review.
 - Permit empty local/SOCKS5 settings so internet-only use remains possible;
@@ -172,7 +174,7 @@ after acceptance. Gates B/C remain pending.
 Additional user-requested Compose acceptance setup: base Compose defaults the
 site bind source to `${PWD}/.local/var/www/html`. Base Compose owns service
 wiring: both services use the backend network; oversite listens on :8000 and
-overgate uses http://oversite:8000 as local_site. The user explicitly removed
+overgate uses oversite:8000 as local_site. The user explicitly removed
 oversite's loopback-only restriction; its standalone default stays loopback.
 The ignored override only publishes 127.0.0.1:2080:2080 and is documented in
 overgate/README.md. After the final backend-network change, `make check` and
@@ -182,22 +184,42 @@ Containers were left running for user acceptance. HTTPS remains stage 4 work.
 
 ## Stage 4 — Add internet proxy chaining and CONNECT
 
-- [ ] Configure the internet HTTP transport to use proxyf.http_proxy when set.
+- [x] Configure the internet HTTP transport to use proxyf.http_proxy when set.
   Verify the upstream receives absolute-form HTTP requests.
-- [ ] For direct CONNECT, establish the destination TCP connection before
+- [x] For direct CONNECT, establish the destination TCP connection before
   sending 200 Connection Established and starting bidirectional copying.
-- [ ] With an upstream proxy, send CONNECT to that proxy and require a successful
+- [x] With an upstream proxy, send CONNECT to that proxy and require a successful
   response before acknowledging the client. Handle failures without entering
   tunnel mode; do not dial the origin directly as a fallback.
-- [ ] Preserve already buffered bytes on both client and upstream sides when
+- [x] Preserve already buffered bytes on both client and upstream sides when
   switching to tunnel mode. Handle EOF, half-close where supported, cancellation,
   bounded shutdown, and connection cleanup without goroutine leaks.
-- [ ] Keep TLS end-to-end; no TLS interception or certificate generation in the
+- [x] Keep TLS end-to-end; no TLS interception or certificate generation in the
   proxy. Test HTTPS with a trusted local test CA.
-- [ ] Test direct/chained HTTP and HTTPS, upstream refusal/non-2xx responses,
+- [x] Test direct/chained HTTP and HTTPS, upstream refusal/non-2xx responses,
   early buffered tunnel data, large bidirectional transfers, and shutdown with
   active tunnels. Reject all special-route CONNECT cases with 405.
-- [ ] Run acceptance gate B below.
+- [x] Run acceptance gate B below.
+
+Stage 4 evidence: `make check` and `go test -race ./overgate/...` passed.
+Tests cover direct/chained HTTP and TLS with a trusted test certificate,
+upstream absolute-form HTTP and CONNECT targets, rejection statuses 403/407/502,
+buffered bytes on both tunnel ends, a large half-closed transfer, and cancellation
+with active tunnels. Shutdown tracks hijacked connections explicitly. Tunnel
+lifetime follows the service context: the HTTP request context can be canceled
+by a client's early half-close before hijacking. Setup remains bounded to 10s.
+Upstream CONNECT headers are bounded to 1 MiB; no direct fallback is used.
+`make up` rebuilt the container; HTTPS https://mail.ru/ through port 2080
+completed TLS and returned 302, and local.overspace returned 200. Containers
+remain running for user acceptance. Gate B passed; gate C remains pending.
+
+Final configuration adjustments: http_proxy and local_site now require
+host:port; yggstack_proxy was renamed to yggstack with the same format.
+make check passed after the rename, including new environment key loading.
+Race tests passed after the HTTP/local endpoint format changes. Real HTTPS
+through the user's upstream 192.168.1.1:1080 returned 302 from mail.ru;
+local_site=oversite:8000 returned 200. Compose currently retains the user's
+machine-specific upstream setting. Overlay forwarding is still unimplemented.
 
 ## Stage 5 — Implement ygg and initial overspace routing
 
@@ -295,7 +317,7 @@ Replace example ports with the fixture's documented published ports.
 
 1. Start the source SOCKS5/Yggstack and destination HTTP node; wait for overlay
    connectivity and demonstrate direct SOCKS5 access to the destination IPv6.
-2. Configure proxyf.yggstack_proxy to the source SOCKS5 listener. Request
+2. Configure proxyf.yggstack to the source SOCKS5 listener. Request
    `http://<destination_public_key>.ygg/marker` through overgate; require the
    destination marker and evidence that the derived IPv6 was reached via SOCKS5.
 3. Repeat with `<destination_public_key>.overspace`; require the same backend

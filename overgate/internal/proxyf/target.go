@@ -90,7 +90,7 @@ func (server *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if r.Method == http.MethodConnect {
-		http.Error(w, "CONNECT forwarding is not implemented", 501)
+		server.connect(w, r, net.JoinHostPort(t.hostname, t.port))
 		return
 	}
 	switch t.route {
@@ -101,10 +101,6 @@ func (server *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		server.forward(w, r, t)
 	case routeInternet:
-		if server.configuration.HTTPProxy != "" {
-			http.Error(w, "upstream proxy forwarding is not implemented", 501)
-			return
-		}
 		server.forward(w, r, t)
 	default:
 		http.Error(w, "overlay forwarding is not implemented", 501)

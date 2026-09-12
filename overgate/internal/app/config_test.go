@@ -7,6 +7,7 @@ import (
 )
 
 func TestConfigDefaultsAndPrecedence(t *testing.T) {
+	t.Setenv("PROXYF__YGGSTACK", "stack:1080")
 	t.Setenv("PROXYF__LISTEN_ON", "127.0.0.1:9000")
 	var c Config
 	load := func(args []string) {
@@ -16,6 +17,9 @@ func TestConfigDefaultsAndPrecedence(t *testing.T) {
 		}
 	}
 	load(nil)
+	if c.ProxyF.Yggstack != "stack:1080" {
+		t.Fatal(c.ProxyF.Yggstack)
+	}
 	if c.ProxyF.ListenOn != "127.0.0.1:9000" {
 		t.Fatal(c.ProxyF.ListenOn)
 	}

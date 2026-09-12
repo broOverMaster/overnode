@@ -8,6 +8,7 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strings"
 	"testing"
 	"time"
@@ -66,7 +67,7 @@ func TestInvalidTargets(t *testing.T) {
 }
 
 func TestHandlerStatus(t *testing.T) {
-	s, err := New(Config{ListenOn: ":2080", HTTPProxy: "http://127.0.0.1:1"}, testLogger())
+	s, err := New(Config{ListenOn: ":2080", HTTPProxy: "127.0.0.1:1"}, testLogger())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -74,13 +75,13 @@ func TestHandlerStatus(t *testing.T) {
 		method, uri string
 		code        int
 	}{
-		{"GET", "/", 400}, {"OPTIONS", "*", 400}, {"GET", "http://example.com/", 501},
+		{"GET", "/", 400}, {"OPTIONS", "*", 400}, {"GET", "http://example.com/", 502},
 		{"GET", "http://local.overspace/", 503}, {"GET", "http://invalid.ygg/", 501},
-		{"CONNECT", "example.com:443", 501}, {"CONNECT", "local.overspace:443", 405},
+		{"CONNECT", "example.com:443", 502}, {"CONNECT", "local.overspace:443", 405},
 		{"CONNECT", "invalid.ygg:443", 405}, {"CONNECT", "invalid.overspace:443", 405},
 	} {
 		w := httptest.NewRecorder()
-		s.ServeHTTP(w, &http.Request{Method: tc.method, RequestURI: tc.uri, Host: "example.com"})
+		s.ServeHTTP(w, &http.Request{Method: tc.method, RequestURI: tc.uri, Host: "example.com", Header: make(http.Header), URL: &url.URL{}})
 		if w.Code != tc.code {
 			t.Errorf("%s %s: %d", tc.method, tc.uri, w.Code)
 		}
@@ -121,7 +122,7 @@ func TestWireRequestForms(t *testing.T) {
 		{"GET / HTTP/1.1", 400},
 		{"GET http://local.overspace/a%2Fb?q=1 HTTP/1.1", 503},
 		{"CONNECT local.overspace:443 HTTP/1.1", 405},
-		{"CONNECT example.com:443 HTTP/1.1", 501},
+		{"CONNECT 127.0.0.1:1 HTTP/1.1", 502},
 	} {
 		c, err := net.DialTimeout("tcp", l.Addr().String(), time.Second)
 		if err != nil {

@@ -1,8 +1,8 @@
 # `overgate` микросервис OverNode
 
 `overgate` — HTTP forward proxy проекта. Реализованы конфигурация, логирование,
-жизненный цикл по образцу `oversite`, классификация запросов и пересылка HTTP
-для маршрутов `local` и прямого `internet` в `internal/proxyf`.
+жизненный цикл по образцу `oversite`, классификация запросов, пересылка HTTP
+для `local` и `internet`, а также CONNECT и цепочка HTTP-прокси для `internet`.
 
 ## Разбор запросов и маршруты
 
@@ -30,12 +30,16 @@ CONNECT для `local`, `ygg` и `overspace` получает `405 Method Not Al
 | Параметр | Значение по умолчанию | Назначение |
 | --- | --- | --- |
 | `proxyf.listen_on` | `:2080` | IP и порт слушателя; пустой IP — все интерфейсы, порт 0 выбирает ОС. |
-| `proxyf.http_proxy` | пусто | Upstream: `http://host[:port]`; пересылка через него появится на этапе 4. |
-| `proxyf.yggstack_proxy` | пусто | Будущий Yggstack: `socks5://host:port`. |
-| `proxyf.local_site` | пусто | Локальный сайт: `http://host[:port]`. |
+| `proxyf.http_proxy` | пусто | Upstream HTTP-прокси: `host:port`, для HTTP и CONNECT. |
+| `proxyf.yggstack` | пусто | Будущий Yggstack SOCKS5: `host:port`. |
+| `proxyf.local_site` | пусто | Локальный HTTP-сайт: `host:port`. |
 
-Адреса проверяются при запуске. Для HTTP
-порт по умолчанию — 80. Credentials, путь, query и fragment в этих URL запрещены.
+Адреса проверяются при запуске. Для `http_proxy` порт обязателен, схема
+`http://` не указывается; IPv6 записывается как `[::1]:1080`.
+Для `local_site` также требуется `host:port`, без схемы, с обязательным портом.
+Credentials, путь, query и fragment запрещены.
+Для `yggstack` действует тот же формат: например, `stack:1080` или `[::1]:1080`.
+Переменная окружения — `PROXYF__YGGSTACK`; старое имя `yggstack_proxy` удалено.
 IPv6 в URL записывается в квадратных скобках. Слушатель принимает числовой IP
 или пустой IP для прослушивания всех интерфейсов.
 
@@ -77,7 +81,7 @@ SIGTERM закрывает слушатель и завершает сервис
 Пример с локально запущенным oversite:
 
 ```sh
-.local/bin/overgate --proxyf.local_site=http://127.0.0.1:8000
+.local/bin/overgate --proxyf.local_site=127.0.0.1:8000
 curl --noproxy '' --proxy http://127.0.0.1:2080 http://local.overspace/
 ```
 
@@ -93,9 +97,29 @@ curl --noproxy '' --proxy http://127.0.0.1:2080 http://local.overspace/
 10 секунд, заголовков ответа — 30 секунд. Потоковые тела передаются без общего
 лимита времени; отмена запроса или остановка сервиса закрывает соединения.
 
-CONNECT для `internet`, маршруты `ygg`/`overspace` и `internet` с заданным
-`http_proxy` пока получают `501`. При заданном upstream прямого fallback нет.
-Пересылка `local` от настройки upstream не зависит.
+Маршруты `ygg`/`overspace` пока получают `501`. Пересылка `local` от настройки
+upstream не зависит.
+
+## HTTPS и цепочка прокси
+
+CONNECT для `internet` создаёт TCP-туннель. Ответ `200 Connection Established`
+отправляется только после соединения с целью или успешного CONNECT у upstream.
+TLS остаётся между клиентом и целевым сервером, без перехвата сертификатов.
+Туннели поддерживают half-close и закрываются при остановке сервиса.
+На соединение и CONNECT-handshake отводится 10 секунд; установленный туннель
+не ограничивается общим временем работы.
+
+```sh
+curl --noproxy '' -x http://127.0.0.1:2080 https://mail.ru/
+```
+
+Если задан `proxyf.http_proxy`, обычный HTTP и CONNECT идут через этот прокси.
+При отказе upstream прямого fallback нет: ошибка CONNECT возвращает `502`,
+таймаут — `504`. Аутентификация upstream пока не поддерживается.
+
+```sh
+.local/bin/overgate --proxyf.http_proxy=127.0.0.1:3128
+```
 
 ## Контейнерный образ
 
@@ -111,7 +135,7 @@ services:
 
 Запустите `make up`. Основной `compose.yaml` задаёт связь сервисов:
 оба сервиса подключены к сети `backend`, oversite слушает `:8000`,
-а `proxyf.local_site` указывает на `http://oversite:8000`.
+а `proxyf.local_site` задаётся как `oversite:8000`.
 Порт 8000 не публикуется на хост. Каталог сайта по умолчанию — `.local/var/www/html`.
 Параметры задаются через Compose environment; локальные YAML-файлы конфигурации
 в контейнеры не монтируются. Override игнорируется Git.
@@ -125,7 +149,8 @@ curl --noproxy '' -i -x http://127.0.0.1:2080 http://example.com/
 Первые два запроса возвращают сайт oversite через маршруты `local` и `internet`
 соответственно. Имя `oversite` во втором запросе разрешается внутри Docker-сети.
 Третий проверяет внешний HTTP-сайт и требует доступа в интернет.
-HTTPS пока не поддерживается (этап 4). Остановка стенда — `make down`.
+Для HTTPS используйте `https://mail.ru/` через тот же прокси.
+Остановка стенда — `make down`.
 
 Образ собирается из корня репозитория командой:
 

@@ -14,7 +14,7 @@ func (server *Server) forward(w http.ResponseWriter, r *http.Request, t target) 
 	host := t.authority
 	transport := server.internetTransport
 	if t.route == routeLocal {
-		local, _ := endpoint(server.configuration.LocalSite, "http")
+		local, _ := httpEndpointURL(server.configuration.LocalSite)
 		destination.Host = local.Host
 		host = "local.overspace"
 		transport = server.localTransport

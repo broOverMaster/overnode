@@ -20,6 +20,8 @@ type Server struct {
 	mu                sync.Mutex
 	stopping          bool
 	requests          sync.WaitGroup
+	tunnels           map[net.Conn]struct{}
+	lifetime          context.Context
 }
 
 // New проверяет зависимости без открытия слушателя.
@@ -30,7 +32,11 @@ func New(configuration Config, logger *slog.Logger) (*Server, error) {
 	if err := configuration.Validate(); err != nil {
 		return nil, err
 	}
-	return &Server{configuration: configuration, logger: logger.With("component", "proxyf"), localTransport: newTransport(), internetTransport: newTransport()}, nil
+	internet := newTransport()
+	if upstream, _ := httpEndpointURL(configuration.HTTPProxy); upstream != nil {
+		internet.Proxy = http.ProxyURL(upstream)
+	}
+	return &Server{configuration: configuration, logger: logger.With("component", "proxyf"), localTransport: newTransport(), internetTransport: internet, tunnels: make(map[net.Conn]struct{}), lifetime: context.Background()}, nil
 }
 
 func newTransport() *http.Transport {
@@ -56,6 +62,7 @@ func (server *Server) Run(ctx context.Context) error {
 
 func (server *Server) serve(ctx context.Context, listener net.Listener) error {
 	ctx, cancel := context.WithCancel(ctx)
+	server.lifetime = ctx
 	httpServer := &http.Server{
 		Handler:           server,
 		ReadHeaderTimeout: 10 * time.Second,
@@ -66,6 +73,9 @@ func (server *Server) serve(ctx context.Context, listener net.Listener) error {
 	defer func() {
 		server.mu.Lock()
 		server.stopping = true
+		for conn := range server.tunnels {
+			_ = conn.Close()
+		}
 		server.mu.Unlock()
 		cancel()
 		_ = httpServer.Close()

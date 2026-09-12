@@ -63,7 +63,7 @@ func TestForwardHTTP(t *testing.T) {
 		w.Header().Set("X-Response-End", "finished")
 	}))
 	defer origin.Close()
-	_, client, _, _ := startProxy(t, Config{LocalSite: origin.URL})
+	_, client, _, _ := startProxy(t, Config{LocalSite: origin.Listener.Addr().String()})
 	for _, local := range []bool{true, false} {
 		base := origin.URL
 		expectedHost := strings.TrimPrefix(origin.URL, "http://")
@@ -104,11 +104,11 @@ func TestRedirectAndIsolation(t *testing.T) {
 		w.WriteHeader(302)
 	}))
 	defer origin.Close()
-	_, client, _, _ := startProxy(t, Config{LocalSite: origin.URL, HTTPProxy: "http://127.0.0.1:1"})
+	_, client, _, _ := startProxy(t, Config{LocalSite: origin.Listener.Addr().String(), HTTPProxy: "127.0.0.1:1"})
 	for _, tc := range []struct {
 		url    string
 		status int
-	}{{"http://local.overspace/", 302}, {origin.URL, 501}, {"http://key.ygg/", 501}, {"http://key.overspace/", 501}} {
+	}{{"http://local.overspace/", 302}, {origin.URL, 502}, {"http://key.ygg/", 501}, {"http://key.overspace/", 501}} {
 		resp, err := client.Get(tc.url)
 		if err != nil {
 			t.Fatal(err)
@@ -129,7 +129,7 @@ func TestUpstreamTimeoutAndShutdown(t *testing.T) {
 		canceled <- struct{}{}
 	}))
 	defer origin.Close()
-	s, client, cancel, _ := startProxy(t, Config{LocalSite: origin.URL})
+	s, client, cancel, _ := startProxy(t, Config{LocalSite: origin.Listener.Addr().String()})
 	s.localTransport.ResponseHeaderTimeout = 30 * time.Millisecond
 	resp, err := client.Get("http://local.overspace/")
 	if err != nil {
@@ -170,7 +170,7 @@ func TestUpstreamTimeoutAndShutdown(t *testing.T) {
 func TestFailureAndRecovery(t *testing.T) {
 	origin := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { _, _ = io.WriteString(w, "recovered") }))
 	address := origin.Listener.Addr().String()
-	s, client, _, _ := startProxy(t, Config{LocalSite: origin.URL})
+	s, client, _, _ := startProxy(t, Config{LocalSite: origin.Listener.Addr().String()})
 	for _, destination := range []string{"http://local.overspace/", origin.URL} {
 		resp, err := client.Get(destination)
 		if err != nil {

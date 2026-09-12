@@ -13,19 +13,19 @@ import (
 
 // Config задаёт слушатель и адреса назначения маршрутов.
 type Config struct {
-	ListenOn      string `mapstructure:"listen_on"`
-	HTTPProxy     string `mapstructure:"http_proxy"`
-	YggstackProxy string `mapstructure:"yggstack_proxy"`
-	LocalSite     string `mapstructure:"local_site"`
+	ListenOn  string `mapstructure:"listen_on"`
+	HTTPProxy string `mapstructure:"http_proxy"`
+	Yggstack  string `mapstructure:"yggstack"`
+	LocalSite string `mapstructure:"local_site"`
 }
 
 // Schema возвращает параметры компонента.
 func Schema() []schema.Field {
 	return []schema.Field{
 		schema.String("proxyf.listen_on", ":2080", "HTTP proxy listen address"),
-		schema.String("proxyf.http_proxy", "", "optional upstream HTTP proxy URL"),
-		schema.String("proxyf.yggstack_proxy", "", "optional Yggstack SOCKS5 proxy URL"),
-		schema.String("proxyf.local_site", "", "optional local HTTP site URL"),
+		schema.String("proxyf.http_proxy", "", "optional upstream HTTP proxy host:port"),
+		schema.String("proxyf.yggstack", "", "optional Yggstack SOCKS5 host:port"),
+		schema.String("proxyf.local_site", "", "optional local HTTP site host:port"),
 	}
 }
 
@@ -58,20 +58,15 @@ func authority(value string, requirePort bool) (string, string, error) {
 	return host, port, nil
 }
 
-func endpoint(value, scheme string) (*url.URL, error) {
+func httpEndpointURL(value string) (*url.URL, error) {
 	if value == "" {
 		return nil, nil
 	}
-	u, err := url.Parse(value)
-	if err != nil || u.Scheme != scheme || u.Opaque != "" || u.User != nil || u.Path != "" || u.RawQuery != "" || u.ForceQuery || u.Fragment != "" || strings.Contains(value, "#") {
-		return nil, fmt.Errorf("expected %s://host:port without credentials, path, query or fragment", scheme)
-	}
-	host, port, err := authority(u.Host, scheme == "socks5")
+	host, port, err := authority(value, true)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("expected host:port without scheme, credentials or path")
 	}
-	u.Host = net.JoinHostPort(host, port)
-	return u, nil
+	return &url.URL{Scheme: "http", Host: net.JoinHostPort(host, port)}, nil
 }
 
 // Validate проверяет конфигурацию до открытия слушателя.
@@ -83,11 +78,15 @@ func (c Config) Validate() error {
 	if _, err := strconv.ParseUint(port, 10, 16); err != nil {
 		return fmt.Errorf("proxyf.listen_on has an invalid port")
 	}
-	for _, item := range []struct{ key, value, scheme string }{
-		{"http_proxy", c.HTTPProxy, "http"}, {"yggstack_proxy", c.YggstackProxy, "socks5"}, {"local_site", c.LocalSite, "http"},
-	} {
-		if _, err := endpoint(item.value, item.scheme); err != nil {
-			return fmt.Errorf("proxyf.%s: %w", item.key, err)
+	if _, err := httpEndpointURL(c.HTTPProxy); err != nil {
+		return fmt.Errorf("proxyf.http_proxy: %w", err)
+	}
+	if _, err := httpEndpointURL(c.LocalSite); err != nil {
+		return fmt.Errorf("proxyf.local_site: %w", err)
+	}
+	if c.Yggstack != "" {
+		if _, _, err := authority(c.Yggstack, true); err != nil {
+			return fmt.Errorf("proxyf.yggstack: expected host:port without scheme, credentials or path")
 		}
 	}
 	return nil
