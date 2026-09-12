@@ -1,4 +1,11 @@
 /.env
-/.local/
+/.local/*
+!/.local/etc/
+!/.local/etc/config.yaml
+!/.local/var/
+!/.local/var/www/
+!/.local/var/www/html/
+!/.local/var/www/html/index.html
+/compose.override.yaml
 *.log
 /coverage.out

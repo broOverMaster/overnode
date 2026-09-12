@@ -12,7 +12,18 @@ services:
     build:
       context: .
       dockerfile: oversite/Dockerfile
+    environment:
+      HTTPD__SITE_PATH: /site
+    volumes:
+      - oversite-site:/site:ro
     networks: [backend]
 
 networks:
   backend:
+
+volumes:
+  oversite-site:
+    driver_opts:
+      type: none
+      o: bind
+      device: ${OVERSITE_SITE_PATH:-}

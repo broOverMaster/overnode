@@ -1,0 +1,11 @@
+# Пример конфигурации oversite.
+# Относительные *_path разрешаются от каталога этого файла.
+
+httpd:
+  listen_on: "127.0.0.1:8000"
+  site_path: "../var/www/html"
+
+logging:
+  level: "info"
+  format: "text"
+  file_path: "../var/www/site.log"

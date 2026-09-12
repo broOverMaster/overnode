@@ -33,8 +33,59 @@ make check
 Собрать образы и запустить сервисы:
 
 ```sh
-make up
+OVERSITE_SITE_PATH="$PWD/.local/var/www/html" make up
 ```
+
+`OVERSITE_SITE_PATH` — путь к каталогу статического сайта на хосте; Compose монтирует
+его в `oversite` только для чтения. Его необходимо задать одним из способов ниже.
+
+Можно передать путь при запуске:
+
+```sh
+OVERSITE_SITE_PATH="$PWD/.local/var/www/html" make up
+```
+
+Или создайте локальный файл `.env` рядом с `compose.yaml`:
+
+```dotenv
+OVERSITE_SITE_PATH=${PWD}/.local/var/www/html
+```
+
+Docker Compose читает `.env` автоматически, поэтому после этого достаточно выполнить
+`docker compose up`. Для `OVERSITE_SITE_PATH` нужен абсолютный путь: bind mount создаёт
+Docker daemon, а не процесс Compose в текущем каталоге. Файл `.env` уже исключён из Git.
+
+Для постоянной локальной конфигурации и доступа к `oversite` с хоста создайте
+игнорируемый Git файл `compose.override.yaml` рядом с `compose.yaml`. Compose подключит
+его автоматически. Host network сохраняет HTTP-слушатель на `127.0.0.1`, а `!reset`
+удаляет унаследованную сеть `backend`, несовместимую с `network_mode`:
+
+```yaml
+services:
+  oversite:
+    network_mode: host
+    networks: !reset []
+
+volumes:
+  oversite-site:
+    driver_opts:
+      device: ${PWD}/.local/var/www/html
+```
+
+После этого достаточно выполнить `docker compose up`, а страницу можно открыть на
+<http://127.0.0.1:8000/>. `compose.override.yaml` не задаёт `OVERSITE_SITE_PATH`:
+переменные из `environment` доступны только контейнеру и не участвуют в подстановке
+полей Compose. Поэтому override переопределяет `device` тома напрямую. Режим host
+network рассчитан на Docker Engine в Linux; для Docker Desktop используйте запуск
+сервиса непосредственно на хосте.
+
+Быстро проверить `oversite` с примером локальной конфигурации и тестовой страницей:
+
+```sh
+go run oversite/cmd/oversite/main.go --config=.local/etc/config.yaml
+```
+
+После запуска откройте <http://127.0.0.1:8000/>. Для остановки нажмите `Ctrl+C`.
 
 Остановить и удалить контейнеры и сеть Compose:
 
@@ -42,7 +93,9 @@ make up
 make down
 ```
 
-На текущем этапе оба исполняемых файла выводят приветственное сообщение и завершаются с кодом `0`. Поэтому после `make up` контейнеры будут иметь статус `Exited (0)` — это ожидаемое поведение, а не ошибка запуска.
+`overgate` пока выводит приветственное сообщение и завершается с кодом `0`.
+`oversite` работает как HTTP-сервер статического сайта и требует переменную
+`OVERSITE_SITE_PATH` при запуске через Compose; подробнее см. [документацию сервиса](oversite/README.md).
 
 ## Команды разработки
 
