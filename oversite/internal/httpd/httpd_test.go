@@ -45,7 +45,7 @@ func TestNewValidatesConfiguration(t *testing.T) {
 
 func TestSchemaRequiresSitePath(t *testing.T) {
 	fields := Schema()
-	if len(fields) != 2 || fields[0].Default != defaultListenOn || fields[1].Key != "httpd.site_path" || fields[1].Default != "" {
+	if len(fields) != 3 || fields[0].Default != defaultListenOn || fields[1].Key != "httpd.site_path" || fields[1].Default != "" || fields[2].Key != "httpd.access_log_path" || fields[2].Default != "" {
 		t.Fatalf("unexpected schema: %#v", fields)
 	}
 }
@@ -64,7 +64,7 @@ func TestServeStaticFileAndStopsOnContextCancellation(t *testing.T) {
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	result := make(chan error, 1)
-	go func() { result <- server.serve(ctx, listener) }()
+	go func() { result <- server.serve(ctx, listener, nil) }()
 
 	response, err := http.Get("http://" + listener.Addr().String() + "/")
 	if err != nil {

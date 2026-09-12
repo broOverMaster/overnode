@@ -14,10 +14,11 @@ import (
 
 const defaultListenOn = "127.0.0.1:8000"
 
-// Config описывает адрес прослушивания и каталог статического сайта.
+// Config описывает адрес прослушивания, каталог статического сайта и access log.
 type Config struct {
-	ListenOn string `mapstructure:"listen_on" json:"listen_on" yaml:"listen_on" toml:"listen_on"`
-	SitePath string `mapstructure:"site_path" json:"site_path" yaml:"site_path" toml:"site_path"`
+	ListenOn      string `mapstructure:"listen_on" json:"listen_on" yaml:"listen_on" toml:"listen_on"`
+	SitePath      string `mapstructure:"site_path" json:"site_path" yaml:"site_path" toml:"site_path"`
+	AccessLogPath string `mapstructure:"access_log_path" json:"access_log_path" yaml:"access_log_path" toml:"access_log_path"`
 }
 
 // Schema возвращает внешние параметры HTTP-компонента.
@@ -25,6 +26,7 @@ func Schema() []schema.Field {
 	return []schema.Field{
 		schema.String("httpd.listen_on", defaultListenOn, "HTTP loopback listen address"),
 		schema.String("httpd.site_path", "", "required static site directory"),
+		schema.String("httpd.access_log_path", "", "optional HTTP access log file path"),
 	}
 }
 

@@ -32,16 +32,27 @@ func New(configuration Config, logger *slog.Logger) (*Server, error) {
 }
 
 // Run открывает слушатель и обслуживает сайт до отмены контекста.
-func (server *Server) Run(ctx context.Context) error {
+func (server *Server) Run(ctx context.Context) (runErr error) {
+	accessLogger, closeAccessLog, err := newAccessLogger(server.configuration.AccessLogPath)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if err := closeAccessLog(); err != nil {
+			runErr = errors.Join(runErr, fmt.Errorf("close HTTP access log: %w", err))
+		}
+	}()
+
 	listener, err := net.Listen("tcp", server.configuration.ListenOn)
 	if err != nil {
 		return fmt.Errorf("listen on %q: %w", server.configuration.ListenOn, err)
 	}
-	return server.serve(ctx, listener)
+	return server.serve(ctx, listener, accessLogger)
 }
 
-func (server *Server) serve(ctx context.Context, listener net.Listener) error {
-	httpServer := &http.Server{Handler: http.FileServer(http.Dir(server.configuration.SitePath))}
+func (server *Server) serve(ctx context.Context, listener net.Listener, accessLogger *slog.Logger) error {
+	handler := accessLogHandler(http.FileServer(http.Dir(server.configuration.SitePath)), accessLogger)
+	httpServer := &http.Server{Handler: handler}
 	server.logger.Info("HTTP server started", "listen_on", listener.Addr().String(), "site_path", server.configuration.SitePath)
 
 	result := make(chan error, 1)

@@ -4,8 +4,9 @@
 httpd:
   listen_on: "127.0.0.1:8000"
   site_path: "../var/www/html"
+  access_log_path: "../var/www/access.log"
 
 logging:
   level: "info"
   format: "text"
-  file_path: "../var/www/site.log"
+  file_path: "../var/www/common.log"
