@@ -10,12 +10,12 @@ Wait for explicit authorization before moving to stage 7 or creating a commit.
 Target branch: `f/proxyf`.
 
 Acceptance layout update: all fixture Compose configuration lives in
-tests/proxyf/compose.yaml as the independent overnode-acceptance project.
+tests/overlay/compose.yaml as the independent overnode-overlay project.
 Root compose.yaml/compose.override.yaml belong exclusively to the working node.
 Acceptance targets do not merge root configs. ACCEPTANCE_PORT defaults to 2080;
 use a different port to run both projects simultaneously.
-Targets are defined only in tests/proxyf/Makefile, not included by the root
-Makefile. Run them from tests/proxyf or use make -C tests/proxyf from the root.
+Targets are defined only in tests/overlay/Makefile, not included by the root
+Makefile. Run them from tests/overlay or use make -C tests/overlay from the root.
 Site and key bind mounts are relative to the fixture directory. Older Compose-layer descriptions
 below record historical acceptance setups and are superseded by this layout.
 

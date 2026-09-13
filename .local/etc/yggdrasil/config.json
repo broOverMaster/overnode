@@ -1,0 +1,12 @@
+{
+  "PrivateKey": "0c4d1d351b1099482f18c979dbb264f90a9559089ea0ee025f95da78e49b574e04f86b4cb3576fb0b0883364699d59d331a4a1b84290798d0a052be12d2639c3",
+  "Peers": [
+    "tcp://ygg-bro:9001",
+    "tcp://ygg-alice:9001",
+    "tcp://ygg-bob:9001"
+  ],
+  "Listen": ["tcp://0.0.0.0:9001"],
+  "MulticastInterfaces": [],
+  "AdminListen": "none",
+  "IfName": "none"
+}

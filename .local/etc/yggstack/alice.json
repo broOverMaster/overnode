@@ -1,0 +1,7 @@
+{
+  "PrivateKey": "f54eda985bb4bc3edcee13b9a7898364d78809bd7c0f9e4f86d528b215ebd203a86af08d03362face7ac3fb249886535fe5d51dfe1dc81d203ca2d08d5c5a397",
+  "Peers": ["tcp://yggdrasil:9001"],
+  "Listen": ["tcp://0.0.0.0:9001"],
+  "MulticastInterfaces": [],
+  "AdminListen": "none"
+}

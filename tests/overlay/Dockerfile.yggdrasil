@@ -1,0 +1,10 @@
+FROM golang:1.25-alpine@sha256:1ae0735f00daffa3aaf1363a5184c0d2dc55c78e3db4ec70241cdac97bf84b59 AS build
+RUN apk add --no-cache git
+WORKDIR /src
+RUN git clone https://github.com/yggdrasil-network/yggdrasil-go.git . && \
+    git checkout --detach v0.5.14
+RUN CGO_ENABLED=0 go build -trimpath -o /out/yggdrasil ./cmd/yggdrasil
+
+FROM alpine:3.23@sha256:fd791d74b68913cbb027c6546007b3f0d3bc45125f797758156952bc2d6daf40
+COPY --from=build /out/yggdrasil /usr/local/bin/yggdrasil
+ENTRYPOINT ["/usr/local/bin/yggdrasil"]

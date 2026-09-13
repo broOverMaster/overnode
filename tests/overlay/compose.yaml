@@ -1,0 +1,149 @@
+# Самостоятельный стенд; пути разрешаются относительно tests/overlay.
+name: overnode-overlay
+
+services:
+  gate-bro:
+    build:
+      context: ../..
+      dockerfile: overgate/Dockerfile
+    command: ["--config", "/config/overgate/config.yaml"]
+    network_mode: service:ygg-bro
+    environment:
+      PROXYF__LOCAL_SITE: site-bro:8000
+      PROXYF__YGGSTACK: 127.0.0.1:1080
+      HTTPIN__LOCAL_SITE: site-bro:8000
+      NETWORK__LOCAL_KEY_PATH: /config/local-key.pem
+      LOGGING__LEVEL: debug
+    volumes:
+      - ../../.local/etc:/config:ro
+    depends_on:
+      ygg-bro:
+        condition: service_started
+      site-bro:
+        condition: service_started
+
+  gate-alice:
+    build:
+      context: ../..
+      dockerfile: overgate/Dockerfile
+    command: ["--config", "/config/overgate/config.yaml"]
+    network_mode: service:ygg-alice
+    environment:
+      PROXYF__LOCAL_SITE: site-alice:8000
+      PROXYF__YGGSTACK: 127.0.0.1:1080
+      HTTPIN__LOCAL_SITE: site-alice:8000
+      NETWORK__LOCAL_KEY_PATH: /config/alice-key.pem
+      LOGGING__LEVEL: debug
+    volumes:
+      - ../../.local/etc:/config:ro
+    depends_on:
+      ygg-alice:
+        condition: service_started
+      site-alice:
+        condition: service_started
+
+  gate-bob:
+    build:
+      context: ../..
+      dockerfile: overgate/Dockerfile
+    command: ["--config", "/config/overgate/config.yaml"]
+    network_mode: service:ygg-bob
+    environment:
+      PROXYF__LOCAL_SITE: site-bob:8000
+      PROXYF__YGGSTACK: 127.0.0.1:1080
+      HTTPIN__LOCAL_SITE: site-bob:8000
+      NETWORK__LOCAL_KEY_PATH: /config/bob-key.pem
+      LOGGING__LEVEL: debug
+    volumes:
+      - ../../.local/etc:/config:ro
+    depends_on:
+      ygg-bob:
+        condition: service_started
+      site-bob:
+        condition: service_started
+
+  site-bro:
+    build:
+      context: ../..
+      dockerfile: oversite/Dockerfile
+    environment:
+      HTTPD__LISTEN_ON: ":8000"
+      HTTPD__SITE_PATH: /site
+    volumes:
+      - ./site/bro:/site:ro
+    networks: [backend]
+
+  site-alice:
+    build:
+      context: ../..
+      dockerfile: oversite/Dockerfile
+    environment:
+      HTTPD__LISTEN_ON: ":8000"
+      HTTPD__SITE_PATH: /site
+    volumes:
+      - ./site/alice:/site:ro
+    networks: [backend]
+
+  site-bob:
+    build:
+      context: ../..
+      dockerfile: oversite/Dockerfile
+    environment:
+      HTTPD__LISTEN_ON: ":8000"
+      HTTPD__SITE_PATH: /site
+    volumes:
+      - ./site/bob:/site:ro
+    networks: [backend]
+
+  ygg-bro:
+    build:
+      context: .
+      dockerfile: Dockerfile.yggstack
+    command: ["-useconffile", "/config/yggstack/broOverMaster.json", "-socks", "127.0.0.1:1080", "-remote-tcp", "80:127.0.0.1:8080"]
+    ports:
+      - "127.0.0.1:${ACCEPTANCE_PORT:-2080}:2080"
+    volumes:
+      - ../../.local/etc:/config:ro
+    networks: [backend]
+    depends_on:
+      yggdrasil:
+        condition: service_started
+
+  ygg-alice:
+    build:
+      context: .
+      dockerfile: Dockerfile.yggstack
+    command: ["-useconffile", "/config/yggstack/alice.json", "-socks", "127.0.0.1:1080", "-remote-tcp", "80:127.0.0.1:8080"]
+    volumes:
+      - ../../.local/etc:/config:ro
+    networks: [backend]
+    depends_on:
+      yggdrasil:
+        condition: service_started
+
+  ygg-bob:
+    build:
+      context: .
+      dockerfile: Dockerfile.yggstack
+    command: ["-useconffile", "/config/yggstack/bob.json", "-socks", "127.0.0.1:1080", "-remote-tcp", "80:127.0.0.1:8080"]
+    volumes:
+      - ../../.local/etc:/config:ro
+    networks: [backend]
+    depends_on:
+      yggdrasil:
+        condition: service_started
+
+  yggdrasil:
+    build:
+      context: .
+      dockerfile: Dockerfile.yggdrasil
+    command: ["-useconffile", "/config/yggdrasil/config.json"]
+    volumes:
+      - ../../.local/etc:/config:ro
+    networks: [backend]
+    cap_add: [NET_ADMIN]
+    devices:
+      - /dev/net/tun:/dev/net/tun
+
+networks:
+  backend:

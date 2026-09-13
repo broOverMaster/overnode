@@ -54,7 +54,7 @@ common/pkg/
 - [Приём HTTP из Yggdrasil (`httpin`)](docs/httpin.md)
 - [HTTPS, CONNECT и цепочка прокси](docs/https.md)
 - [Docker и приёмочный стенд](docs/container.md)
-- [Тестовый стенд proxyf](../tests/proxyf/README.md)
+- [Тестовый стенд overlay](../tests/overlay/README.md)
 
 Приёмочные сценарии и ограничения, которые ещё не реализованы, описаны в
 корневой [документации проекта](../docs/proxyf-implementation-plan.md).

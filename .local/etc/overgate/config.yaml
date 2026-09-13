@@ -1,0 +1,19 @@
+# Пример локальной конфигурации overgate.
+# Относительные *_path разрешаются от каталога этого файла.
+
+logging:
+  level: "info"
+  format: "text"
+
+network:
+  local_key_path: "../local-key.pem"
+  overlay_hosts_path: "../overlay.hosts"
+
+proxyf:
+  listen_on: "127.0.0.1:2080"
+  yggstack: "127.0.0.1:1080"
+  local_site: "127.0.0.1:8000"
+
+httpin:
+  listen_on: "127.0.0.1:8080"
+  local_site: "127.0.0.1:8000"

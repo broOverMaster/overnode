@@ -11,18 +11,18 @@ make down
 ```
 
 Для полного Yggdrasil/overspace-контура используется изолированный стенд
-`tests/proxyf`:
+`tests/overlay`:
 
 ```sh
-make -C tests/proxyf acceptance-up
-make -C tests/proxyf acceptance-check
-make -C tests/proxyf acceptance-down
+make -C tests/overlay acceptance-up
+make -C tests/overlay acceptance-check
+make -C tests/overlay acceptance-down
 ```
 
 Стенд содержит source Yggstack с SOCKS5 `:1080`, destination Yggstack с
 `-remote-tcp` на `overgate B/httpin :8080`, второй `oversite` и отдельные сети.
 Публикуемый порт задаётся `ACCEPTANCE_PORT` (по умолчанию `2080`). Подробные
-сценарии отказов находятся в [README стенда](../../tests/proxyf/README.md).
+сценарии отказов находятся в [README стенда](../../tests/overlay/README.md).
 
 В рабочем Compose `oversite` слушает `:8000`, `proxyf.local_site` указывает на
 `oversite:8000`, а наружу публикуется только proxy-порт.
