@@ -4,7 +4,7 @@ import (
 	"net"
 	"net/http"
 
-	"overnode/common/pkg/overlay"
+	"overnode/common/pkg/network/overlay"
 	"overnode/gate/internal/proxyf/routing"
 )
 

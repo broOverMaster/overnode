@@ -431,12 +431,12 @@ route. It delegates request-target parsing and route classification to
 tunnels (including upstream CONNECT and tracked connection shutdown) to
 `proxyf/tunnel`.
 
-`overgate/internal/network` owns reusable overgate parsing of `host[:port]` and
+`common/pkg/network` owns reusable parsing of `host[:port]` and
 `host:port`. It is shared by proxyf configuration, routing and httpin. It stays
 internal until another service consumes the same contract, at which point it can
 move to `common/pkg/network` without changing its API.
 
-The former Yggdrasil address conversion is in `common/pkg/overlay`; therefore
+The former Yggdrasil address conversion is in `common/pkg/network/overlay`; therefore
 the yggdrasil-go dependency belongs to the common module. The routing, tunnel
 and forwarding refactor preserves proxy behavior; focused and end-to-end proxyf
 tests remain its verification coverage.

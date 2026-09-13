@@ -7,7 +7,7 @@ import (
 	"strconv"
 
 	"overnode/common/pkg/config/schema"
-	"overnode/gate/internal/network"
+	"overnode/common/pkg/network"
 )
 
 // Config задаёт входящий слушатель и единственный адрес сайта.

@@ -9,7 +9,7 @@ import (
 	"net/http"
 	"net/url"
 	"overnode/common/pkg/lifecycle"
-	"overnode/gate/internal/network"
+	"overnode/common/pkg/network"
 	"overnode/gate/internal/proxyf/forwarding"
 	"overnode/gate/internal/proxyf/tunnel"
 	"sync"

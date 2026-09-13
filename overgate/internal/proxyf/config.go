@@ -8,7 +8,7 @@ import (
 	"strconv"
 
 	"overnode/common/pkg/config/schema"
-	"overnode/gate/internal/network"
+	"overnode/common/pkg/network"
 )
 
 // Config задаёт слушатель и адреса назначения маршрутов.

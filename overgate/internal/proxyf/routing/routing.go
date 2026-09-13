@@ -8,7 +8,7 @@ import (
 	"net/url"
 	"strings"
 
-	"overnode/gate/internal/network"
+	"overnode/common/pkg/network"
 )
 
 // Route определяет сеть, в которую направляется запрос.

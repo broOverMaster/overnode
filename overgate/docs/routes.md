@@ -24,7 +24,7 @@ CONNECT example.org:443 HTTP/1.1
 ```text
 proxyf.Server.ServeHTTP
   → proxyf/routing.Parse
-      → internal/network.ParseAuthority
+      → common/pkg/network.ParseAuthority
   → обработчик выбранного маршрута
 ```
 
@@ -150,7 +150,7 @@ HTTP CONNECT и SOCKS5 CONNECT — разные протоколы. Первый
 Клиент
   =(HTTP Proxy / TCP; absolute-form)=> overgate A / proxyf
   → routing [ygg]
-  → common/pkg/overlay.NormalizeAddress
+  → common/pkg/network/overlay.NormalizeAddress
       <hex_public_key>.ygg → IPv6 Yggdrasil
   → forwarding → overlayTransport
   =(SOCKS5 / TCP; CONNECT к [IPv6]:port)=> Yggstack A
@@ -165,7 +165,7 @@ HTTP CONNECT и SOCKS5 CONNECT — разные протоколы. Первый
                     Host: <key>.ygg
 ```
 
-`common/pkg/overlay` вычисляет IPv6 из 32-байтного публичного ключа Ed25519. Это
+`common/pkg/network/overlay` вычисляет IPv6 из 32-байтного публичного ключа Ed25519. Это
 локальное вычисление, DNS-запроса нет. В SOCKS5 передаётся числовой IPv6 и порт
 из URL, по умолчанию `80`. `forwarding` сохраняет исходный логический `Host`.
 
@@ -187,7 +187,7 @@ HTTP CONNECT и SOCKS5 CONNECT — разные протоколы. Первый
   =(HTTP Proxy / TCP; absolute-form)=> overgate A
   → proxyf.Server
   → routing [overspace]
-  → common/pkg/overlay: public key → IPv6
+  → common/pkg/network/overlay: public key → IPv6
   → forwarding → overlayTransport
   =(SOCKS5 / TCP; CONNECT к [IPv6]:80)=> Yggstack A
   =(HTTP / TCP / IPv6; шифрование Yggdrasil)=> Yggstack B
@@ -257,9 +257,9 @@ CONNECT — `405`, пустой backend — `503`, ошибка backend — `502
 | `internal/app` | Инициализирует компоненты и передаёт их lifecycle общему координатору. | Не участвует в трафике. |
 | `common/pkg/lifecycle` | Запускает сервисы, отменяет соседние при завершении одного и собирает ошибки. | Не участвует в трафике. |
 | `internal/proxyf` | HTTP forward proxy, политика доступности маршрутов и владелец транспортов. | Принимает HTTP Proxy и CONNECT. |
-| `internal/network` | Проверяет и разбирает `host[:port]`/`host:port`. | Сетевых обращений нет. |
+| `common/pkg/network` | Проверяет и разбирает `host[:port]`/`host:port`. | Сетевых обращений нет. |
 | `internal/proxyf/routing` | Разбирает request-target, нормализует имя и выбирает маршрут. | Сетевых обращений нет. |
-| `common/pkg/overlay` | Преобразует публичный ключ Ed25519 в IPv6 Yggdrasil. | Сетевых обращений и DNS нет. |
+| `common/pkg/network/overlay` | Преобразует публичный ключ Ed25519 в IPv6 Yggdrasil. | Сетевых обращений и DNS нет. |
 | `internal/proxyf/forwarding` | Формирует исходящий HTTP-запрос и выбирает готовый transport маршрута. | HTTP через выбранный transport. |
 | `internal/proxyf/tunnel` | Обслуживает прямые и chained CONNECT-туннели и закрывает активные соединения. | HTTP CONNECT, затем прозрачный TCP. |
 | `internal/httpin` | Принимает origin-form HTTP и пересылает фиксированному backend. | HTTP server и HTTP client. |

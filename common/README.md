@@ -8,7 +8,8 @@
 - [`pkg/config/schema`](pkg/config/schema/README.md) — описание внешних параметров конфигурации, используемое загрузчиком и компонентами.
 - [`pkg/logging`](pkg/logging/README.md) — создание структурированного `slog.Logger` и его параметры конфигурации.
 - [`pkg/lifecycle`](pkg/lifecycle/README.md) — общий контракт сервисов и координация их остановки.
-- [`pkg/overlay`](pkg/overlay/README.md) — преобразование публичных ключей Yggdrasil в IPv6-адреса.
+- [`pkg/network`](pkg/network/README.md) — разбор сетевых адресов и контракт overlay-резолвинга.
+- [`pkg/network/overlay`](pkg/network/overlay/README.md) — разрешение overlay-имён и преобразование ключей Yggdrasil в IPv6.
 
 Импорт общего пакета из сервиса имеет вид:
 

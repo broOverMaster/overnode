@@ -37,14 +37,13 @@ overgate/
 └── internal/
     ├── app/               инициализация компонентов и lifecycle
     ├── httpin/             входящий HTTP из overlay в фиксированный backend
-    ├── network/            разбор сетевых адресов host:port
     └── proxyf/
         ├── routing/        разбор request-target и выбор маршрута
         ├── forwarding/     обычная HTTP-пересылка
         └── tunnel/         CONNECT-туннели
 common/pkg/
 ├── lifecycle/             общий контракт и координация сервисов
-└── overlay/               ключ Ed25519 → IPv6 Yggdrasil
+└── network/               сетевые утилиты и overlay-резолвер
 ```
 
 ## Документация

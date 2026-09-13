@@ -1,4 +1,4 @@
-// Пакет network содержит сетевые утилиты, общие для компонентов overgate.
+// Пакет network содержит сетевые утилиты, общие для компонентов OverNode.
 package network
 
 import (
