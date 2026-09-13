@@ -79,7 +79,7 @@ func TestLifecycle(t *testing.T) {
 	}
 	body, err := io.ReadAll(resp.Body)
 	resp.Body.Close()
-	if err != nil || resp.StatusCode != 501 || !strings.Contains(string(body), "not implemented") {
+	if err != nil || resp.StatusCode != 400 || !strings.Contains(string(body), "invalid public key") {
 		t.Fatalf("response: %d %s %v", resp.StatusCode, body, err)
 	}
 	cancel()

@@ -76,7 +76,7 @@ func TestHandlerStatus(t *testing.T) {
 		code        int
 	}{
 		{"GET", "/", 400}, {"OPTIONS", "*", 400}, {"GET", "http://example.com/", 502},
-		{"GET", "http://local.overspace/", 503}, {"GET", "http://invalid.ygg/", 501},
+		{"GET", "http://local.overspace/", 503}, {"GET", "http://invalid.ygg/", 400},
 		{"CONNECT", "example.com:443", 502}, {"CONNECT", "local.overspace:443", 405},
 		{"CONNECT", "invalid.ygg:443", 405}, {"CONNECT", "invalid.overspace:443", 405},
 	} {

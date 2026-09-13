@@ -27,7 +27,7 @@
 - **Date:** 2026-09-13
 - **Severity:** low
 - **Status:** open
-- **Location:** planned `overgate/internal/proxyf` overspace route.
+- **Location:** `overgate/internal/proxyf` overspace route (`target.go`, `overlay.go`).
 
 ### Current scope
 

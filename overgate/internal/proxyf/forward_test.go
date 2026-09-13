@@ -108,7 +108,7 @@ func TestRedirectAndIsolation(t *testing.T) {
 	for _, tc := range []struct {
 		url    string
 		status int
-	}{{"http://local.overspace/", 302}, {origin.URL, 502}, {"http://key.ygg/", 501}, {"http://key.overspace/", 501}} {
+	}{{"http://local.overspace/", 302}, {origin.URL, 502}, {"http://key.ygg/", 400}, {"http://key.overspace/", 400}} {
 		resp, err := client.Get(tc.url)
 		if err != nil {
 			t.Fatal(err)

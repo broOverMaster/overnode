@@ -102,7 +102,17 @@ func (server *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		server.forward(w, r, t)
 	case routeInternet:
 		server.forward(w, r, t)
-	default:
-		http.Error(w, "overlay forwarding is not implemented", 501)
+	case routeYgg, routeOverspace:
+		ip, err := overlayAddress(t.hostname)
+		if err != nil {
+			http.Error(w, "invalid public key", 400)
+			return
+		}
+		if server.configuration.Yggstack == "" {
+			http.Error(w, "Yggstack is not configured", 503)
+			return
+		}
+		t.hostname = ip
+		server.forward(w, r, t)
 	}
 }

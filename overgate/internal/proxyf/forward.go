@@ -20,6 +20,9 @@ func (server *Server) forward(w http.ResponseWriter, r *http.Request, t target) 
 		transport = server.localTransport
 	} else {
 		destination.Host = net.JoinHostPort(t.hostname, t.port)
+		if t.route == routeYgg || t.route == routeOverspace {
+			transport = server.overlayTransport
+		}
 	}
 	proxy := &httputil.ReverseProxy{
 		Transport:     transport,

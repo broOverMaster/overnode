@@ -1,8 +1,10 @@
 # Overgate HTTP proxy implementation plan
 
 Status: stage 1 committed as 82dda55; stage 2 committed as 091e020.
-Stage 3 committed as 6b1407d. Stage 4 closed at the user's request and
-prepared for commit. Wait for explicit authorization before stage 5.
+Stage 3 committed as 6b1407d; stage 4 committed as ee5340b.
+Stages 5–6 accepted and closed at the user's request; prepared for commit.
+The real two-node Docker/Yggstack fixture remains running.
+Wait for explicit authorization before moving to stage 7 or creating a commit.
 Target branch: `f/proxyf`.
 
 Execution rule: stop after each stage and wait for explicit user confirmation
@@ -223,49 +225,74 @@ machine-specific upstream setting. Overlay forwarding is still unimplemented.
 
 ## Stage 5 — Implement ygg and initial overspace routing
 
-- [ ] Verify the supported Yggdrasil/Yggstack version and authoritative public
+- [x] Verify the supported Yggdrasil/Yggstack version and authoritative public
   key-to-IPv6 derivation API. Prefer a maintained upstream implementation;
   inspect dependency scope before choosing a package. Do not invent a hash rule.
-- [ ] Validate the entire prefix as one hex-encoded public key of the exact
+- [x] Validate the entire prefix as one hex-encoded public key of the exact
   length required by that version (expected Ed25519: 32 bytes / 64 hex digits).
-- [ ] Add independently obtained known key/address vectors, invalid lengths,
+- [x] Add independently obtained known key/address vectors, invalid lengths,
   non-hex input, and extra-label tests; avoid testing an algorithm against itself.
-- [ ] Dial the derived IPv6 and original/default port through SOCKS5 using an
+- [x] Dial the derived IPv6 and original/default port through SOCKS5 using an
   IPv6 destination address. Never ask DNS or SOCKS5 to resolve the .ygg or
   .overspace name, and never use the internet upstream for these routes.
-- [ ] Keep separate route dispatch for overspace while reusing derivation/dialing.
-- [ ] Use a controlled SOCKS5 test server to verify the exact destination bytes,
+- [x] Keep separate route dispatch for overspace while reusing derivation/dialing.
+- [x] Use a controlled SOCKS5 test server to verify the exact destination bytes,
   port, forwarded HTTP semantics, cancellation, and failed handshakes.
-- [ ] Keep T-2 open; non-key overspace names return 400 in this first version.
+- [x] Keep T-2 open; non-key overspace names return 400 in this first version.
 
 ## Stage 6 — Build a reproducible Docker acceptance environment
 
-- [ ] Add a dedicated test Compose file and fixture scripts/configuration, with
+Stage 5 evidence: make check and go test -race ./overgate/... passed.
+Yggdrasil v0.5.14 supplies AddrForKey and the independent upstream test vector;
+only its address package is imported, not the node runtime. x/net v0.56.0
+provides a context-aware SOCKS5 dialer with a 10-second full setup deadline.
+Controlled TCP SOCKS5 tests verify ATYP=IPv6, exact address/ports, logical Host,
+POST body/path/query, both suffixes, rejected keys without outbound attempts,
+missing configuration, SOCKS5 rejection/auth failure, and shutdown cancellation
+during handshake. T-2 remains open. Real Yggstack compatibility and reachability
+are pending gate C; no real overlay acceptance is claimed at this stage.
+
+- [x] Add a dedicated test Compose file and fixture scripts/configuration, with
   exact start/check/stop commands documented alongside them. Keep test services
   opt-in and separate from normal service startup and private .local settings.
-- [ ] Pin Yggstack to a verified version/image digest or build a pinned upstream
+- [x] Pin Yggstack to a verified version/image digest or build a pinned upstream
   revision. Verify its actual SOCKS5 flags, configuration, readiness mechanism,
   and network requirements before writing the Compose service.
-- [ ] Run a source Yggstack exposing SOCKS5 and a reachable destination node
+- [x] Run a source Yggstack exposing SOCKS5 and a reachable destination node
   serving an HTTP fixture over its Yggdrasil IPv6. A SOCKS5 listener alone is
   insufficient to verify successful overlay routing.
-- [ ] Prefer two deterministic test nodes peered directly over a Docker network,
+- [x] Prefer two deterministic test nodes peered directly over a Docker network,
   avoiding reliance on public peers. Determine whether the destination requires
   TUN/NET_ADMIN or an upstream-supported userspace listener; document and scope
   any required privileges to the test fixture.
-- [ ] Use test-only identities, record the destination public key/IPv6, and
+- [x] Use test-only identities, record the destination public key/IPv6, and
   provide an HTTP endpoint on port 80 plus another port for explicit-port tests.
-- [ ] Include a controlled internet HTTP/HTTPS origin and upstream HTTP proxy
-  with connection/request evidence to prove direct versus chained behavior.
-- [ ] Include oversite with a known static response. Use the backend network
+- [x] Reuse stage 4's controlled HTTP/HTTPS origin and upstream fixtures in Go
+  tests for direct/chained behavior. The Docker fixture focuses on real overlay;
+  it also checks direct internet dispatch against oversite's Docker address.
+- [x] Include oversite with a known static response. Use the backend network
   and http://oversite:8000, with oversite listening on :8000. Its loopback-only
   restriction was explicitly removed by the user during stage 3 acceptance.
-- [ ] Publish only client-facing test ports on host loopback. Keep fixture keys
+- [x] Publish only client-facing test ports on host loopback. Keep fixture keys
   distinct from real identities; preserve useful failure logs before teardown.
-- [ ] Run gate C. If Docker/Yggstack is unavailable, report overlay acceptance
+- [x] Run gate C. If Docker/Yggstack is unavailable, report overlay acceptance
   as not run; unit tests and SOCKS5 mocks do not substitute for this gate.
 
 ## Stage 7 — Documentation and final verification
+
+Stage 6 evidence: Yggstack commit c39db65e5bccac4cbcf712331a87ea1952cca98b
+(Yggdrasil v0.5.14) runs source SOCKS5 and destination remote-tcp mappings on
+ports 80/8081. RFC 8032 test-only identities are checked in. Destination key:
+3d4017c3e843895a92b70aa74d1b7ebc9c982ccf2ec4968cc0cd55f12af4660c;
+IPv6 from upstream CLI: 202:15ff:41e0:bde3:b52b:6a47:aac5:9724.
+No TUN or elevated capabilities are needed. Public peers are absent.
+make acceptance-up, acceptance-check and acceptance-faults passed: both suffixes,
+default/explicit ports, Host/POST/URI/body, invalid keys, CONNECT rejection,
+local/internet regression, 502 when SOCKS5 stops, 504 when the destination stops,
+and recovery. Gate C passed. Docker logs retain peer/route/request evidence.
+Containers are left running for user acceptance. The acceptance Compose layer
+temporarily disables the user's HTTP upstream without editing base Compose;
+make acceptance-down followed by make up restores normal configuration.
 
 - [ ] Update Russian overgate/root documentation with supported forms, route
   rules, configuration, startup examples, CONNECT limits, and error behavior.

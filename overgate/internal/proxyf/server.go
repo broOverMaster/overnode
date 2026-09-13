@@ -9,6 +9,8 @@ import (
 	"net/http"
 	"sync"
 	"time"
+
+	"golang.org/x/net/proxy"
 )
 
 // Server управляет слушателем HTTP-прокси.
@@ -17,6 +19,7 @@ type Server struct {
 	logger            *slog.Logger
 	localTransport    *http.Transport
 	internetTransport *http.Transport
+	overlayTransport  *http.Transport
 	mu                sync.Mutex
 	stopping          bool
 	requests          sync.WaitGroup
@@ -36,7 +39,24 @@ func New(configuration Config, logger *slog.Logger) (*Server, error) {
 	if upstream, _ := httpEndpointURL(configuration.HTTPProxy); upstream != nil {
 		internet.Proxy = http.ProxyURL(upstream)
 	}
-	return &Server{configuration: configuration, logger: logger.With("component", "proxyf"), localTransport: newTransport(), internetTransport: internet, tunnels: make(map[net.Conn]struct{}), lifetime: context.Background()}, nil
+	overlay := newTransport()
+	if configuration.Yggstack != "" {
+		host, port, _ := authority(configuration.Yggstack, true)
+		dialer, err := proxy.SOCKS5("tcp", net.JoinHostPort(host, port), nil, &net.Dialer{Timeout: 10 * time.Second, KeepAlive: 30 * time.Second})
+		if err != nil {
+			return nil, fmt.Errorf("create SOCKS5 dialer: %w", err)
+		}
+		contextDialer, ok := dialer.(proxy.ContextDialer)
+		if !ok {
+			return nil, fmt.Errorf("SOCKS5 dialer must support context")
+		}
+		overlay.DialContext = func(ctx context.Context, network, address string) (net.Conn, error) {
+			ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+			defer cancel()
+			return contextDialer.DialContext(ctx, network, address)
+		}
+	}
+	return &Server{configuration: configuration, logger: logger.With("component", "proxyf"), localTransport: newTransport(), internetTransport: internet, overlayTransport: overlay, tunnels: make(map[net.Conn]struct{}), lifetime: context.Background()}, nil
 }
 
 func newTransport() *http.Transport {
@@ -82,6 +102,7 @@ func (server *Server) serve(ctx context.Context, listener net.Listener) error {
 		server.requests.Wait()
 		server.localTransport.CloseIdleConnections()
 		server.internetTransport.CloseIdleConnections()
+		server.overlayTransport.CloseIdleConnections()
 	}()
 	server.logger.Info("HTTP proxy started", "listen_on", listener.Addr().String())
 	result := make(chan error, 1)
