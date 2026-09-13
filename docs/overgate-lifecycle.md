@@ -1,25 +1,83 @@
-# Overgate lifecycle
+# Жизненный цикл компонентов сервисов
 
-- `proxyf.New` and `httpin.New` accept `(config, logger, *[]lifecycle.LifeCycle)`
-  and return `(http.Handler, error)`. Constructors validate before registration;
-  errors leave the registry unchanged. The slice pointer must not be nil.
-- Enabled services append themselves to the shared slice. Empty
-  `httpin.listen_on` skips registration and logs the reason, but still returns
-  a usable handler when `httpin.local_site` is configured. Proxyf listener
-  validation and defaults are unchanged.
-- `app.Run` initializes all components before calling `lifecycle.Start` and
-  `Group.Wait`. The registry contains only non-nil services.
-- Start creates a child context and launches registered services. Wait is called
-  once; the first completion cancels siblings, all results are collected, and
-  errors are joined. Empty groups return immediately. Parent context cancellation
-  stops services; child cancellation does not cancel the parent.
-- Components attach their names to Run errors and log readiness after binding.
-  Main logs application-level failures as `overgate failed`.
-- This abstraction stays in `overgate/internal/lifecycle`; common and oversite
-  are unchanged. Routing and Docker acceptance configuration are unchanged.
-- Verification: `make check`, race tests for overgate, and focused lifecycle/app
-  race tests passed during this refactor. Tests cover registration, disabled
-  handlers, initialization failures, empty groups, cancellation, sibling shutdown,
-  error aggregation, and listener failures. Docker acceptance was not rerun.
-- The pre-existing `go.work.sum` modification is user work, not part of this
-  lifecycle refactor.
+В проекте используется общая модель управления жизненным циклом: компонент,
+который работает продолжительное время, реализует контракт `LifeCycle`, а
+запуском и остановкой набора таких компонентов управляет координатор
+`common/pkg/lifecycle`.
+
+Каждый компонент работает до отмены контекста или собственной ошибки. Владелец
+жизненного цикла создаёт компоненты, регистрирует их в общей группе, запускает
+эту группу и ожидает остановки всех участников.
+
+Модель описывает только внешний контракт компонента и правила совместного
+завершения; предметная логика компонента остаётся за его реализацией.
+
+## Контракт компонента
+
+```go
+type LifeCycle interface {
+	Run(context.Context) error
+}
+```
+
+`Run` запускает компонент и удерживает выполнение до отмены переданного контекста
+или возникновения ошибки.
+
+Компонент должен:
+
+- при отмене контекста завершать работу и возвращать управление;
+- возвращать `nil` при штатной остановке;
+- возвращать ненулевую ошибку, если работа завершилась сбоем.
+
+Срез компонентов, передаваемый координатору, не должен содержать `nil`.
+
+## Запуск
+
+До запуска группы владелец создаёт и проверяет каждый компонент. `Start` только
+запускает готовые компоненты и не выполняет их инициализацию.
+
+`Start`:
+
+- принимает родительский контекст и срез компонентов;
+- создаёт общий дочерний контекст;
+- запускает `Run` каждого компонента в отдельной горутине;
+- возвращает `Group` для ожидания завершения.
+
+Порядок компонентов в срезе не задаёт порядок завершения и не гарантирует
+фактический порядок запуска.
+
+## Остановка
+
+`Group.Wait` ожидает завершения всех компонентов. После завершения первого из
+них отменяется общий дочерний контекст, поэтому остальные компоненты получают
+сигнал к остановке.
+
+`Wait`:
+
+- вызывается ровно один раз после `Start`;
+- ожидает завершения всех компонентов, а не только первого;
+- собирает ошибки всех компонентов и возвращает их объединённую ошибку;
+- возвращает `nil`, если группа пуста или все компоненты завершились без ошибок.
+
+Отмена дочернего контекста не отменяет родительский контекст. Отмена
+родительского контекста, напротив, останавливает компоненты группы.
+
+## Обязанности владельца
+
+Владелец жизненного цикла:
+
+- создаёт и проверяет компоненты до вызова `Start`;
+- передаёт координатору только готовые к запуску компоненты;
+- вызывает `Start` один раз и `Wait` один раз;
+- обрабатывает объединённую ошибку, возвращённую `Wait`.
+
+Типовая последовательность:
+
+```go
+var components []lifecycle.LifeCycle
+
+// Создание и проверка компонентов.
+
+group := lifecycle.Start(ctx, components)
+return group.Wait()
+```

@@ -20,37 +20,39 @@
 
 | ID | Дата | Тема | Критичность | Статус |
 | --- | --- | --- | --- | --- |
-| T-2 | 2026-09-13 | Resolve non-key overspace names | низкая | открыта |
+| T-2 | 2026-09-13 | Резолвинг overspace-имён без ключа | низкая | открыта |
 
-## T-2. Resolve non-key overspace names
+## T-2. Резолвинг overspace-имён без ключа
 
-- **Date:** 2026-09-13
-- **Severity:** low
-- **Status:** open
-- **Location:** `overgate/internal/proxyf/target.go` overspace route and
-  `overgate/internal/overlay/overlay.go` address conversion.
+- **Дата:** 2026-09-13
+- **Критичность:** низкая
+- **Статус:** открыта
+- **Где:** маршрут overspace в `overgate/internal/proxyf/target.go` и
+  преобразование адресов в `overgate/internal/overlay/overlay.go`.
 
-### Current scope
+### Текущая область
 
-The initial overspace route accepts only `<hex_public_key>.overspace`, derives
-the Yggdrasil IPv6 address, and forwards HTTP through the configured Yggstack
-SOCKS5 proxy. Other overspace names return HTTP 400. `local.overspace` is handled
-separately by the local route.
+Изначальный маршрут overspace принимает только `<hex_public_key>.overspace`,
+выводит IPv6-адрес Yggdrasil и пересылает HTTP через настроенный SOCKS5-прокси
+Yggstack. Остальные имена overspace возвращают HTTP 400. `local.overspace`
+обрабатывается отдельно локальным маршрутом.
 
-### Deferred work
+### Отложенная работа
 
-Resolve an overspace target that does not match `<hex_public_key>.overspace`
-to a public key before deriving the destination IPv6 address. Specify the
-resolver source/protocol, trust rules, caching, and lookup failure behavior in
-a separate design. Keep overspace dispatch distinct from ygg so this can be
-added without changing ygg routing.
+Нужно разрешать цель overspace, которая не соответствует
+`<hex_public_key>.overspace`, в публичный ключ до вывода IPv6-адреса назначения.
+Источник и протокол резолвера, правила доверия, кеширование и поведение при
+ошибке поиска нужно описать в отдельном проекте. Сохранять диспетчеризацию
+overspace отдельной от ygg, чтобы добавление этой возможности не меняло
+маршрутизацию ygg.
 
-### Acceptance
+### Приёмка
 
-A non-key overspace name resolves to the expected public key and reaches its
-HTTP destination through SOCKS5. Literal-key names and local.overspace retain
-their behavior. Lookup failures do not fall back to public DNS or internet.
-Remove this entry only after the resolver lands in a commit referencing T-2.
+Имя overspace без ключа должно разрешаться в ожидаемый публичный ключ и
+достигать HTTP-назначения через SOCKS5. Имена с литеральным ключом и
+`local.overspace` сохраняют текущее поведение. Ошибки поиска не должны
+приводить к откату на публичный DNS или интернет. Удалить эту запись можно
+только после того, как резолвер попадёт в коммит со ссылкой на T-2.
 
 ## Шаблон записи
 
