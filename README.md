@@ -94,7 +94,10 @@ make down
 `internet`, включая HTTPS через CONNECT и цепочку через upstream HTTP-прокси.
 Для `.ygg` и `.overspace` реализована HTTP-пересылка по hex-ключу через SOCKS5
 из `proxyf.yggstack`. Для приёмки на двух Docker/Yggstack-узлах выполните
-`make acceptance-up` и `make acceptance-check`; см. [описание стенда](tests/proxyf/README.md).
+`make -C tests/proxyf acceptance-up` и `make -C tests/proxyf acceptance-check`;
+см. [описание стенда](tests/proxyf/README.md).
+Входящий HTTP из Yggdrasil принимает отдельный `httpin` второго overgate и
+пересылает его второму oversite. Стенд проверяет эту полную цепочку.
 Обычные HTTP-запросы получают `400`,
 CONNECT для специальных маршрутов — `405`.
 `oversite` работает как HTTP-сервер статического сайта; `OVERSITE_SITE_PATH`

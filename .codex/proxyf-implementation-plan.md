@@ -2,10 +2,22 @@
 
 Status: stage 1 committed as 82dda55; stage 2 committed as 091e020.
 Stage 3 committed as 6b1407d; stage 4 committed as ee5340b.
-Stages 5–6 accepted and closed at the user's request; prepared for commit.
-The real two-node Docker/Yggstack fixture remains running.
+Stages 5–6 committed as bd3425b. The user then requested the missing incoming
+Yggdrasil -> overgate -> oversite path and a replacement acceptance fixture.
+This extension and fixture separation are closed at the user's request and
+prepared for commit; the independent fixture remains running.
 Wait for explicit authorization before moving to stage 7 or creating a commit.
 Target branch: `f/proxyf`.
+
+Acceptance layout update: all fixture Compose configuration lives in
+tests/proxyf/compose.yaml as the independent overnode-acceptance project.
+Root compose.yaml/compose.override.yaml belong exclusively to the working node.
+Acceptance targets do not merge root configs. ACCEPTANCE_PORT defaults to 2080;
+use a different port to run both projects simultaneously.
+Targets are defined only in tests/proxyf/Makefile, not included by the root
+Makefile. Run them from tests/proxyf or use make -C tests/proxyf from the root.
+Site and key bind mounts are relative to the fixture directory. Older Compose-layer descriptions
+below record historical acceptance setups and are superseded by this layout.
 
 Execution rule: stop after each stage and wait for explicit user confirmation
 of its completion before starting the next stage.
@@ -277,6 +289,35 @@ are pending gate C; no real overlay acceptance is claimed at this stage.
   distinct from real identities; preserve useful failure logs before teardown.
 - [x] Run gate C. If Docker/Yggstack is unavailable, report overlay acceptance
   as not run; unit tests and SOCKS5 mocks do not substitute for this gate.
+
+## Incoming HTTP extension — requested after stages 5–6
+
+- [x] Add internal/httpin, accepting origin-form HTTP on httpin.listen_on
+  (empty disables it) and forwarding exclusively to httpin.local_site (host:port).
+  Preserve logical Host, path/query, method, body and end-to-end headers/trailers.
+  Reject absolute-form with 400 and CONNECT with 405; no client-selected backend.
+- [x] Share signal/context lifecycle with proxyf through app.Run(Config).
+  Validate both configurations before serving; stop both on either component's
+  failure and await completion. Keep proxyf's origin-form rejection unchanged.
+- [x] Base Compose enables httpin at :8080 pointing to oversite:8000 without
+  publishing 8080. Acceptance destination uses a separate overgate (overlay-gate)
+  sharing Yggstack B's namespace; remote-tcp targets its loopback httpin port.
+- [x] Replace synthetic overlay-http with a real oversite B (overlay-site),
+  holding a distinct static marker on an internal destination network inaccessible
+  to overgate A. Removed the old fixture container and source/Dockerfile;
+  prior versions remain recoverable from Git history.
+- [x] Verify make check and race tests; httpin tests cover fixed destination,
+  request/response preservation, trailers, rejected forms, errors and cancellation.
+  App tests verify that a bind failure stops the sibling component.
+- [x] Run acceptance-check and acceptance-faults on the full chain. Both suffixes
+  and ports return overlay-marker / served-by=oversite-B; real oversite returns
+  200 for POST too. Stopping SOCKS5 gives 502, losing the overlay node gives 504;
+  stopping overgate B or oversite B gives 502. All recoveries and local/internet
+  regressions passed. Incoming logs show component=httpin and original logical Host.
+
+The original gate C validated outbound HTTP over Yggdrasil only. This extension
+additionally validates overgate A -> Yggdrasil -> overgate B/httpin -> oversite B.
+No overlay sender authentication or name resolution beyond literal keys was added.
 
 ## Stage 7 — Documentation and final verification
 

@@ -9,6 +9,8 @@ services:
     environment:
       PROXYF__LISTEN_ON: ":2080"
       PROXYF__LOCAL_SITE: oversite:8000
+      HTTPIN__LISTEN_ON: ":8080"
+      HTTPIN__LOCAL_SITE: oversite:8000
       PROXYF__HTTP_PROXY: 192.168.1.1:1080
     depends_on:
       - oversite

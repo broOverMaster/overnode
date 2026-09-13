@@ -36,7 +36,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 	}()
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
-	if err := app.Run(ctx, c.ProxyF, logger); err != nil {
+	if err := app.Run(ctx, c, logger); err != nil {
 		logger.Error("proxy failed", "error", err)
 		return 1
 	}

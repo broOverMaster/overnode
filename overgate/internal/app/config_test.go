@@ -8,6 +8,8 @@ import (
 
 func TestConfigDefaultsAndPrecedence(t *testing.T) {
 	t.Setenv("PROXYF__YGGSTACK", "stack:1080")
+	t.Setenv("HTTPIN__LISTEN_ON", ":8080")
+	t.Setenv("HTTPIN__LOCAL_SITE", "site:8000")
 	t.Setenv("PROXYF__LISTEN_ON", "127.0.0.1:9000")
 	var c Config
 	load := func(args []string) {
@@ -17,6 +19,9 @@ func TestConfigDefaultsAndPrecedence(t *testing.T) {
 		}
 	}
 	load(nil)
+	if c.HTTPIn.ListenOn != ":8080" || c.HTTPIn.LocalSite != "site:8000" {
+		t.Fatalf("httpin configuration: %+v", c.HTTPIn)
+	}
 	if c.ProxyF.Yggstack != "stack:1080" {
 		t.Fatal(c.ProxyF.Yggstack)
 	}
