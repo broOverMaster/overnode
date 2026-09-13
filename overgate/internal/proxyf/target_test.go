@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"overnode/gate/internal/lifecycle"
 	"strings"
 	"testing"
 	"time"
@@ -67,7 +68,7 @@ func TestInvalidTargets(t *testing.T) {
 }
 
 func TestHandlerStatus(t *testing.T) {
-	s, err := New(Config{ListenOn: ":2080", HTTPProxy: "127.0.0.1:1"}, testLogger())
+	s, err := New(Config{ListenOn: ":2080", HTTPProxy: "127.0.0.1:1"}, testLogger(), new([]lifecycle.LifeCycle))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -96,14 +97,14 @@ func TestWireRequestForms(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	s, err := New(Config{ListenOn: l.Addr().String()}, testLogger())
+	s, err := New(Config{ListenOn: l.Addr().String()}, testLogger(), new([]lifecycle.LifeCycle))
 	if err != nil {
 		l.Close()
 		t.Fatal(err)
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	done := make(chan error, 1)
-	go func() { done <- s.serve(ctx, l) }()
+	go func() { done <- s.(*Server).serve(ctx, l) }()
 	defer func() {
 		cancel()
 		select {

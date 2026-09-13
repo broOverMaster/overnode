@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"net/url"
+	"overnode/gate/internal/lifecycle"
 	"strings"
 	"sync"
 	"time"
@@ -26,7 +27,11 @@ type Server struct {
 }
 
 // New проверяет конфигурацию и создаёт транспорт без открытия слушателя.
-func New(c Config, logger *slog.Logger) (*Server, error) {
+// Обработчик доступен всегда; при пустом ListenOn сервис в срез не добавляется.
+func New(c Config, logger *slog.Logger, lifeCycles *[]lifecycle.LifeCycle) (http.Handler, error) {
+	if lifeCycles == nil {
+		return nil, fmt.Errorf("httpin lifecycle slice must not be nil")
+	}
 	if logger == nil {
 		return nil, fmt.Errorf("httpin logger must not be nil")
 	}
@@ -64,6 +69,11 @@ func New(c Config, logger *slog.Logger) (*Server, error) {
 			http.Error(w, http.StatusText(code), code)
 		},
 	}
+	if c.ListenOn == "" {
+		s.logger.Info("component skipped", "reason", "httpin.listen_on is empty")
+		return s, nil
+	}
+	*lifeCycles = append(*lifeCycles, s)
 	return s, nil
 }
 
@@ -97,7 +107,12 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 // Run открывает слушатель и закрывает активные запросы при отмене контекста.
-func (s *Server) Run(ctx context.Context) error {
+func (s *Server) Run(ctx context.Context) (err error) {
+	defer func() {
+		if err != nil {
+			err = fmt.Errorf("run httpin: %w", err)
+		}
+	}()
 	if s.config.ListenOn == "" {
 		return fmt.Errorf("httpin listener is disabled")
 	}

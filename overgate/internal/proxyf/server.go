@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"net"
 	"net/http"
+	"overnode/gate/internal/lifecycle"
 	"sync"
 	"time"
 
@@ -28,7 +29,11 @@ type Server struct {
 }
 
 // New проверяет зависимости без открытия слушателя.
-func New(configuration Config, logger *slog.Logger) (*Server, error) {
+// Возвращает обработчик и добавляет сервис в общий срез после успешной инициализации.
+func New(configuration Config, logger *slog.Logger, lifeCycles *[]lifecycle.LifeCycle) (http.Handler, error) {
+	if lifeCycles == nil {
+		return nil, fmt.Errorf("proxyf lifecycle slice must not be nil")
+	}
 	if logger == nil {
 		return nil, fmt.Errorf("proxyf logger must not be nil")
 	}
@@ -56,7 +61,9 @@ func New(configuration Config, logger *slog.Logger) (*Server, error) {
 			return contextDialer.DialContext(ctx, network, address)
 		}
 	}
-	return &Server{configuration: configuration, logger: logger.With("component", "proxyf"), localTransport: newTransport(), internetTransport: internet, overlayTransport: overlay, tunnels: make(map[net.Conn]struct{}), lifetime: context.Background()}, nil
+	server := &Server{configuration: configuration, logger: logger.With("component", "proxyf"), localTransport: newTransport(), internetTransport: internet, overlayTransport: overlay, tunnels: make(map[net.Conn]struct{}), lifetime: context.Background()}
+	*lifeCycles = append(*lifeCycles, server)
+	return server, nil
 }
 
 func newTransport() *http.Transport {
@@ -72,7 +79,12 @@ func newTransport() *http.Transport {
 }
 
 // Run открывает слушатель и блокируется до отмены контекста.
-func (server *Server) Run(ctx context.Context) error {
+func (server *Server) Run(ctx context.Context) (err error) {
+	defer func() {
+		if err != nil {
+			err = fmt.Errorf("run proxyf: %w", err)
+		}
+	}()
 	listener, err := net.Listen("tcp", server.configuration.ListenOn)
 	if err != nil {
 		return fmt.Errorf("listen on %q: %w", server.configuration.ListenOn, err)

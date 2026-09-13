@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"overnode/gate/internal/lifecycle"
 	"strings"
 	"testing"
 	"time"
@@ -20,12 +21,13 @@ func startProxy(t *testing.T, c Config) (*Server, *http.Client, context.CancelFu
 		t.Fatal(err)
 	}
 	c.ListenOn = l.Addr().String()
-	s, err := New(c, testLogger())
+	handler, err := New(c, testLogger(), new([]lifecycle.LifeCycle))
 	if err != nil {
 		l.Close()
 		t.Fatal(err)
 	}
 	ctx, cancel := context.WithCancel(context.Background())
+	s := handler.(*Server)
 	done := make(chan error, 1)
 	go func() { done <- s.serve(ctx, l) }()
 	u, _ := url.Parse("http://" + l.Addr().String())

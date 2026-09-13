@@ -7,6 +7,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"overnode/gate/internal/lifecycle"
 	"strings"
 	"testing"
 	"time"
@@ -45,9 +46,19 @@ func TestConfiguration(t *testing.T) {
 			if err := tc.config.Validate(); (err == nil) != tc.valid {
 				t.Fatalf("Validate: %v, valid=%v", err, tc.valid)
 			}
+			var services []lifecycle.LifeCycle
+			h, err := New(tc.config, testLogger(), &services)
+			if tc.valid {
+				if err != nil || h == nil || len(services) != 1 {
+					t.Fatalf("missing component: %v", err)
+				}
+			} else if err == nil || h != nil || len(services) != 0 {
+				t.Fatal("invalid config returned component")
+			}
 		})
 	}
-	if _, err := New(Config{ListenOn: "127.0.0.1:0"}, nil); err == nil {
+	var services []lifecycle.LifeCycle
+	if h, err := New(Config{ListenOn: "127.0.0.1:0"}, nil, &services); err == nil || h != nil || len(services) != 0 {
 		t.Fatal("nil logger accepted")
 	}
 }
@@ -58,11 +69,16 @@ func TestLifecycle(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer listener.Close()
-	server, err := New(Config{ListenOn: listener.Addr().String()}, testLogger())
+	var services []lifecycle.LifeCycle
+	handler, err := New(Config{ListenOn: listener.Addr().String()}, testLogger(), &services)
 	if err != nil {
 		t.Fatal(err)
 	}
 	ctx, cancel := context.WithCancel(context.Background())
+	server := handler.(*Server)
+	if len(services) != 1 || services[0] != server {
+		t.Fatal("handler and lifecycle must share the same component")
+	}
 	defer cancel()
 	done := make(chan error, 1)
 	go func() { done <- server.serve(ctx, listener) }()
@@ -104,11 +120,12 @@ func TestListenFailure(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer listener.Close()
-	server, err := New(Config{ListenOn: listener.Addr().String()}, testLogger())
+	var services []lifecycle.LifeCycle
+	_, err = New(Config{ListenOn: listener.Addr().String()}, testLogger(), &services)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := server.Run(context.Background()); err == nil {
+	if err := services[0].Run(context.Background()); err == nil {
 		t.Fatal("occupied listener accepted")
 	}
 }
@@ -119,11 +136,11 @@ func TestServeFailure(t *testing.T) {
 		t.Fatal(err)
 	}
 	listener.Close()
-	server, err := New(Config{ListenOn: "127.0.0.1:0"}, testLogger())
+	handler, err := New(Config{ListenOn: "127.0.0.1:0"}, testLogger(), new([]lifecycle.LifeCycle))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := server.serve(context.Background(), listener); err == nil {
+	if err := handler.(*Server).serve(context.Background(), listener); err == nil {
 		t.Fatal("closed listener accepted")
 	}
 }

@@ -7,6 +7,7 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"overnode/gate/internal/lifecycle"
 	"strings"
 	"testing"
 	"time"
@@ -27,8 +28,18 @@ func TestConfiguration(t *testing.T) {
 		if err := tc.c.Validate(); (err == nil) != tc.valid {
 			t.Fatalf("%+v: %v", tc.c, err)
 		}
+		var services []lifecycle.LifeCycle
+		h, err := New(tc.c, logger(), &services)
+		if tc.valid {
+			if err != nil || h == nil || (len(services) == 0) != (tc.c.ListenOn == "") {
+				t.Fatalf("unexpected constructor result for %+v: %v, %v, %v", tc.c, h, services, err)
+			}
+		} else if err == nil || h != nil || len(services) != 0 {
+			t.Fatalf("invalid config returned component: %+v", tc.c)
+		}
 	}
-	if _, err := New(Config{}, nil); err == nil {
+	var services []lifecycle.LifeCycle
+	if h, err := New(Config{}, nil, &services); err == nil || h != nil || len(services) != 0 {
 		t.Fatal("nil logger accepted")
 	}
 }
@@ -51,13 +62,17 @@ func TestForwardAndForms(t *testing.T) {
 		w.Header().Set("X-End", "response-end")
 	}))
 	defer backend.Close()
-	s, err := New(Config{ListenOn: ":0", LocalSite: backend.Listener.Addr().String()}, logger())
+	var services []lifecycle.LifeCycle
+	s, err := New(Config{LocalSite: backend.Listener.Addr().String()}, logger(), &services)
 	if err != nil {
 		t.Fatal(err)
 	}
 	front := httptest.NewServer(s)
+	if s == nil || len(services) != 0 {
+		t.Fatal("disabled listener must retain handler without lifecycle")
+	}
 	defer front.Close()
-	defer s.transport.CloseIdleConnections()
+	defer s.(*Server).transport.CloseIdleConnections()
 	tr := &http.Transport{}
 	defer tr.CloseIdleConnections()
 	client := &http.Client{Transport: tr, Timeout: time.Second, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
@@ -114,7 +129,12 @@ func TestCancellationAndTimeout(t *testing.T) {
 		exited <- struct{}{}
 	}))
 	defer backend.Close()
-	s, _ := New(Config{ListenOn: "127.0.0.1:0", LocalSite: backend.Listener.Addr().String()}, logger())
+	var services []lifecycle.LifeCycle
+	handler, err := New(Config{ListenOn: "127.0.0.1:0", LocalSite: backend.Listener.Addr().String()}, logger(), &services)
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := handler.(*Server)
 	s.transport.ResponseHeaderTimeout = 20 * time.Millisecond
 	front := httptest.NewServer(s)
 	resp, err := front.Client().Get(front.URL)
@@ -133,7 +153,14 @@ func TestCancellationAndTimeout(t *testing.T) {
 	}
 	front.Close()
 	s.transport.CloseIdleConnections()
-	s, _ = New(Config{ListenOn: "127.0.0.1:0", LocalSite: backend.Listener.Addr().String()}, logger())
+	handler, err = New(Config{ListenOn: "127.0.0.1:0", LocalSite: backend.Listener.Addr().String()}, logger(), &services)
+	if err != nil {
+		t.Fatal(err)
+	}
+	s = handler.(*Server)
+	if len(services) != 2 || services[1] != s || services[0] == services[1] {
+		t.Fatal("handler and lifecycle must share the same component")
+	}
 	l, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatal(err)

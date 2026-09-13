@@ -3,11 +3,12 @@ package app
 
 import (
 	"context"
-	"errors"
+	"fmt"
 	"log/slog"
 	"overnode/common/pkg/config/schema"
 	"overnode/common/pkg/logging"
 	"overnode/gate/internal/httpin"
+	"overnode/gate/internal/lifecycle"
 	"overnode/gate/internal/proxyf"
 )
 
@@ -25,26 +26,19 @@ func Schema() []schema.Field {
 
 // Run запускает proxyf и включённый httpin; завершение одного останавливает оба.
 func Run(ctx context.Context, c Config, logger *slog.Logger) error {
-	server, err := proxyf.New(c.ProxyF, logger)
+	// Инициализация компонентов.
+	var lifeCycles []lifecycle.LifeCycle
+	_, err := proxyf.New(c.ProxyF, logger, &lifeCycles)
 	if err != nil {
-		return err
+		return fmt.Errorf("initialize proxyf: %w", err)
 	}
-	if err := c.HTTPIn.Validate(); err != nil {
-		return err
-	}
-	if c.HTTPIn.ListenOn == "" {
-		return server.Run(ctx)
-	}
-	incoming, err := httpin.New(c.HTTPIn, logger)
+	_, err = httpin.New(c.HTTPIn, logger, &lifeCycles)
 	if err != nil {
-		return err
+		return fmt.Errorf("initialize httpin: %w", err)
 	}
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
-	results := make(chan error, 2)
-	go func() { results <- server.Run(ctx) }()
-	go func() { results <- incoming.Run(ctx) }()
-	first := <-results
-	cancel()
-	return errors.Join(first, <-results)
+	// Запуск компонентов.
+	services := lifecycle.Start(ctx, lifeCycles)
+
+	// Завершение одного сервиса останавливает остальные.
+	return services.Wait()
 }

@@ -37,7 +37,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 	if err := app.Run(ctx, c, logger); err != nil {
-		logger.Error("proxy failed", "error", err)
+		logger.Error("overgate failed", "error", err)
 		return 1
 	}
 	return 0
