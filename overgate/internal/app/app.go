@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"overnode/common/pkg/config/schema"
-	keyed25519 "overnode/common/pkg/crypto/ed25519"
+	crypto "overnode/common/pkg/crypto"
 	"overnode/common/pkg/lifecycle"
 	"overnode/common/pkg/logging"
 	"overnode/common/pkg/network"
@@ -36,7 +36,7 @@ func Run(ctx context.Context, c Config, logger *slog.Logger) error {
 	if err != nil {
 		return fmt.Errorf("initialize network: %w", err)
 	}
-	publicKey, err := keyed25519.PublicKeyToHex(localPublicKey)
+	publicKey, err := crypto.PublicKeyToHex(localPublicKey)
 	if err != nil {
 		return fmt.Errorf("encode local public key: %w", err)
 	}

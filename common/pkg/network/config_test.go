@@ -8,14 +8,14 @@ import (
 	"path/filepath"
 	"testing"
 
-	keyed25519 "overnode/common/pkg/crypto/ed25519"
+	crypto "overnode/common/pkg/crypto"
 	"overnode/common/pkg/network"
 )
 
 const testSeed = "9d61b19deffd5a60ba844af492ec2cc44449c5697b326919703bac031cae7f60"
 
 func TestLocalKeySources(t *testing.T) {
-	privateKey, err := keyed25519.PrivateKeyFromSeedHex(testSeed)
+	privateKey, err := crypto.KeyFromHex(testSeed)
 	if err != nil {
 		t.Fatal(err)
 	}

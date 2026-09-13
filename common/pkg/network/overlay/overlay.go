@@ -11,7 +11,7 @@ import (
 	"os"
 	"strings"
 
-	keyed25519 "overnode/common/pkg/crypto/ed25519"
+	crypto "overnode/common/pkg/crypto"
 
 	"github.com/yggdrasil-network/yggdrasil-go/src/address"
 )
@@ -56,7 +56,7 @@ func (value *resolver) ResolveName(name string) ([]byte, error) {
 	}
 	base = strings.TrimSuffix(name, ".overspace")
 	if len(base) == ed25519.PublicKeySize*2 {
-		if publicKey, err := keyed25519.PublicKeyFromHex(base); err == nil {
+		if publicKey, err := crypto.PublicKeyFromHex(base); err == nil {
 			return append([]byte(nil), publicKey...), nil
 		}
 	}
@@ -92,7 +92,7 @@ func (value *resolver) loadHosts(path string) error {
 		if len(fields) < 2 {
 			return fmt.Errorf("overlay hosts file line %d: expected key and name", lineNumber)
 		}
-		publicKey, err := keyed25519.PublicKeyFromHex(fields[0])
+		publicKey, err := crypto.PublicKeyFromHex(fields[0])
 		if err != nil {
 			return fmt.Errorf("overlay hosts file line %d: invalid public key: %w", lineNumber, err)
 		}
