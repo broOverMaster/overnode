@@ -35,8 +35,8 @@ proxyf.Server.ServeHTTP
 
 | Целевое имя | Маршрут | Обычный HTTP | CONNECT |
 | --- | --- | --- | --- |
-| `local.overspace` | `local` | разрешён | `405` |
-| `<hex_public_key>.overspace` | `overspace` | разрешён | `405` |
+| `local.overspace` или имя локальной ноды | `local` | разрешён | `405` |
+| Имя из `overlay.hosts` или `<hex_public_key>.overspace` | `overspace` | разрешён | `405` |
 | `<hex_public_key>.ygg` | `ygg` | разрешён | `405` |
 | остальные имена и IP | `internet` | разрешён | разрешён |
 
@@ -176,9 +176,10 @@ HTTP CONNECT и SOCKS5 CONNECT — разные протоколы. Первый
 ## Маршрут overspace
 
 Сейчас `overspace` и `ygg` имеют отдельные значения маршрута, но используют
-одинаковое преобразование ключа, `overlayTransport` и SOCKS5 Yggstack. Такое
-разделение сохраняет место для дальнейшей логики overspace. Резолвинг имени,
-отличного от `<hex_public_key>.overspace`, отложен в задачу T-2.
+общий `overlayTransport` и SOCKS5 Yggstack. Для `overspace` имя разрешается
+через `common/pkg/network/overlay.Resolver`: literal hex-ключи обрабатываются
+напрямую, остальные имена ищутся в hosts-файле. Имя локальной ноды направляется
+в `local`, если разрешённый публичный ключ совпадает с ключом локальной ноды.
 
 Полная реализованная схема приёмочного стенда:
 
@@ -187,6 +188,7 @@ HTTP CONNECT и SOCKS5 CONNECT — разные протоколы. Первый
   =(HTTP Proxy / TCP; absolute-form)=> overgate A
   → proxyf.Server
   → routing [overspace]
+  → common/pkg/network/overlay.Resolver: name → public key
   → common/pkg/network/overlay: public key → IPv6
   → forwarding → overlayTransport
   =(SOCKS5 / TCP; CONNECT к [IPv6]:80)=> Yggstack A
@@ -224,7 +226,8 @@ SOCKS5 используется только между `overlayTransport` и и
 HTTP не преобразуется в иной прикладной протокол. Шифрование между Yggdrasil-
 узлами предоставляет Yggdrasil; overgate не добавляет TLS к HTTP.
 
-Для обоих overlay-маршрутов неверный ключ возвращает `400`, пустой
+Для `ygg` неверный ключ возвращает `400`. Для `overspace` неизвестное имя
+возвращает `404`, неверное имя или ключ — `400`. Пустой
 `proxyf.yggstack` — `503`, ошибка SOCKS5 или недоступность цели — `502`, таймаут —
 `504`. Прямого fallback в DNS или internet нет.
 
@@ -283,6 +286,7 @@ CONNECT — `405`, пустой backend — `503`, ошибка backend — `502
 | Код | Основные причины |
 | --- | --- |
 | `400` | Неверная форма proxy-запроса, target, имя или публичный ключ; absolute-form на `httpin`. |
+| `404` | Имя `overspace` отсутствует в resolver hosts-файле. |
 | `405` | CONNECT для `local`, `ygg`, `overspace` либо любой CONNECT на `httpin`. |
 | `502` | Ошибка HTTP backend, upstream proxy, SOCKS5 или установки TCP-соединения. |
 | `503` | Не настроены `proxyf.local_site`, `proxyf.yggstack` или backend `httpin`. |

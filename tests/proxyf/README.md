@@ -22,7 +22,9 @@ ACCEPTANCE_PORT=22080 make acceptance-check
 ACCEPTANCE_PORT=22080 make acceptance-faults
 ```
 
-Стенд задаёт `proxyf.yggstack=yggstack:1080` и не использует внешний HTTP upstream.
+Стенд задаёт `proxyf.yggstack=yggstack:1080`, использует локальный Ed25519-ключ
+из `tests/proxyf/local-key.pem` через `network.local_key_path` и не использует
+внешний HTTP upstream.
 
 Два Yggstack-узла соединены прямым TCP peer-соединением внутри `backend`.
 Первый предоставляет SOCKS5; второй публикует входящий HTTP-компонент второго

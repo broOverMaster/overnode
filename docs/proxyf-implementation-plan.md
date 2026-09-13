@@ -35,7 +35,7 @@ fallback. Parse the hostname separately from the port before classifying it.
 | Target hostname | Route | Behavior |
 | --- | --- | --- |
 | `local.overspace` | `local` | Forward HTTP to `proxyf.local_site`, with `Host: local.overspace`. |
-| Any other hostname ending in `.overspace` | `overspace` | Initially resolve a hex public key to a Yggdrasil IPv6 address and connect through SOCKS5. |
+| Any other hostname ending in `.overspace` | `overspace` | Resolve a literal key or hosts-file name to a Yggdrasil IPv6 address and connect through SOCKS5. |
 | Hostname ending in `.ygg` | `ygg` | Resolve a hex public key to a Yggdrasil IPv6 address and connect through SOCKS5. |
 | Everything else, including IP literals | `internet` | Connect directly, or through the configured upstream HTTP proxy. |
 
@@ -47,8 +47,8 @@ fallback. Parse the hostname separately from the port before classifying it.
 - Preserve an explicitly supplied destination port. Default ordinary HTTP
   destinations to port 80.
 - A malformed public key for `ygg` or `overspace` returns 400.
-- `overspace` remains a distinct route even while sharing key resolution and
-  transport with `ygg`. Human-readable name resolution is deferred as T-2.
+- `overspace` remains a distinct route while sharing transport with `ygg`.
+  Human-readable names are resolved through the configured overlay resolver.
 - Use the agreed configuration prefix `proxyf`: `proxyf.http_proxy`,
   `proxyf.yggstack`, and `proxyf.local_site`, matching the package name.
 - Follow the existing oversite lifecycle: entrypoint-owned configuration,

@@ -13,7 +13,10 @@ services:
       PROXYF__LOCAL_SITE: oversite:8000
       PROXYF__YGGSTACK: yggstack:1080
       PROXYF__HTTP_PROXY: ""
+      NETWORK__LOCAL_KEY_PATH: /config/local-key.pem
       LOGGING__LEVEL: debug
+    volumes:
+      - ./local-key.pem:/config/local-key.pem:ro
     depends_on:
       oversite:
         condition: service_started
@@ -68,7 +71,10 @@ services:
       PROXYF__LISTEN_ON: "127.0.0.1:2080"
       HTTPIN__LISTEN_ON: "127.0.0.1:8080"
       HTTPIN__LOCAL_SITE: overlay-site:8000
+      NETWORK__LOCAL_KEY_PATH: /config/local-key.pem
       LOGGING__LEVEL: debug
+    volumes:
+      - ./overlay-gate-key.pem:/config/local-key.pem:ro
     depends_on: [overlay-node, overlay-site]
     cap_drop: [ALL]
 

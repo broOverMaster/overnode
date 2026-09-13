@@ -17,6 +17,10 @@ type Config struct {
 	HTTPProxy string `mapstructure:"http_proxy"`
 	Yggstack  string `mapstructure:"yggstack"`
 	LocalSite string `mapstructure:"local_site"`
+
+	// Runtime-only dependencies initialized by app.
+	OverlayResolver network.OverlayResolver `mapstructure:"-"`
+	LocalPublicKey  []byte                  `mapstructure:"-"`
 }
 
 // Schema возвращает параметры компонента.

@@ -28,6 +28,9 @@ func TestConfigDefaultsAndPrecedence(t *testing.T) {
 	if c.ProxyF.ListenOn != "127.0.0.1:9000" {
 		t.Fatal(c.ProxyF.ListenOn)
 	}
+	if c.Network.LocalKey != "" || c.Network.LocalKeyPath != "" || c.Network.OverlayHostsPath != "" {
+		t.Fatalf("network defaults: %+v", c.Network)
+	}
 	load([]string{"--proxyf.listen_on=127.0.0.1:9001"})
 	if c.ProxyF.ListenOn != "127.0.0.1:9001" {
 		t.Fatal(c.ProxyF.ListenOn)

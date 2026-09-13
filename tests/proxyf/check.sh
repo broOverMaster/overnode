@@ -21,12 +21,14 @@ for suffix in ygg overspace; do
     printf 'PASS %s\n' "$target"
   done
 done
-for target in invalid.ygg human.overspace; do
-  status=$(curl --silent --show-error --max-time 15 --noproxy '' -x "http://${proxy_address}" \
-    -o /dev/null -w '%{http_code}' "http://${target}/")
-  test "$status" = 400
-  printf 'PASS invalid key %s: 400\n' "$target"
-done
+status=$(curl --silent --show-error --max-time 15 --noproxy '' -x "http://${proxy_address}" \
+  -o /dev/null -w '%{http_code}' "http://invalid.ygg/")
+test "$status" = 400
+printf 'PASS invalid key invalid.ygg: 400\n'
+status=$(curl --silent --show-error --max-time 15 --noproxy '' -x "http://${proxy_address}" \
+  -o /dev/null -w '%{http_code}' "http://human.overspace/")
+test "$status" = 404
+printf 'PASS unknown name human.overspace: 404\n'
 for target in local.overspace "${node_key}.ygg" "${node_key}.overspace"; do
   status=$(curl --silent --max-time 15 --noproxy '' -x "http://${proxy_address}" \
     -o /dev/null -w '%{http_connect}' "https://${target}/" || true)

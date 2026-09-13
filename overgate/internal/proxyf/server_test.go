@@ -29,7 +29,7 @@ func TestConfiguration(t *testing.T) {
 		{"IPv6 proxy", Config{ListenOn: ":2080", HTTPProxy: "[::1]:1080"}, true},
 		{"proxy needs port", Config{ListenOn: ":2080", HTTPProxy: "proxy"}, false},
 		{"proxy rejects URL", Config{ListenOn: ":2080", HTTPProxy: "http://proxy:1080"}, false},
-		{"all", Config{"[::1]:8080", "proxy:3128", "stack:1080", "localhost:80"}, true},
+		{"all", Config{ListenOn: "[::1]:8080", HTTPProxy: "proxy:3128", Yggstack: "stack:1080", LocalSite: "localhost:80"}, true},
 		{"IPv6 yggstack", Config{ListenOn: ":2080", Yggstack: "[::1]:1080"}, true},
 		{"yggstack URL rejected", Config{ListenOn: ":2080", Yggstack: "socks5://stack:1080"}, false},
 		{"bad listener", Config{ListenOn: "localhost:8080"}, false},

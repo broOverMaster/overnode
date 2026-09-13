@@ -7,12 +7,15 @@ import (
 	"net"
 	"net/http"
 	"overnode/common/pkg/lifecycle"
+	"overnode/common/pkg/network"
 	"overnode/gate/internal/httpin"
 	"overnode/gate/internal/proxyf"
 	"strings"
 	"testing"
 	"time"
 )
+
+const testLocalSeed = "9d61b19deffd5a60ba844af492ec2cc44449c5697b326919703bac031cae7f60"
 
 func TestComponentFailureStopsSibling(t *testing.T) {
 	for _, incomingFails := range []bool{false, true} {
@@ -27,7 +30,7 @@ func TestComponentFailureStopsSibling(t *testing.T) {
 		}
 		free := available.Addr().String()
 		available.Close()
-		c := Config{ProxyF: proxyf.Config{ListenOn: free}, HTTPIn: httpin.Config{ListenOn: occupied.Addr().String(), LocalSite: "127.0.0.1:1"}}
+		c := Config{Network: network.Config{LocalKey: testLocalSeed}, ProxyF: proxyf.Config{ListenOn: free}, HTTPIn: httpin.Config{ListenOn: occupied.Addr().String(), LocalSite: "127.0.0.1:1"}}
 		if !incomingFails {
 			c.ProxyF.ListenOn, c.HTTPIn.ListenOn = c.HTTPIn.ListenOn, c.ProxyF.ListenOn
 		}
@@ -108,7 +111,7 @@ func (l lifecycleLog) Write(p []byte) (int, error) {
 func TestRunCancellation(t *testing.T) {
 	for _, name := range []string{"proxyf_only", "both"} {
 		t.Run(name, func(t *testing.T) {
-			c := Config{ProxyF: proxyf.Config{ListenOn: "127.0.0.1:0"}}
+			c := Config{Network: network.Config{LocalKey: testLocalSeed}, ProxyF: proxyf.Config{ListenOn: "127.0.0.1:0"}}
 			if name == "both" {
 				c.HTTPIn = httpin.Config{ListenOn: "127.0.0.1:0", LocalSite: "127.0.0.1:1"}
 			}

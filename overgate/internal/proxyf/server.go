@@ -25,6 +25,8 @@ type Server struct {
 	localTransport    *http.Transport
 	internetTransport *http.Transport
 	overlayTransport  *http.Transport
+	overlayResolver   network.OverlayResolver
+	localPublicKey    []byte
 	forwarder         *forwarding.Forwarder
 	tunneler          *tunnel.Tunneler
 	tunnels           *tunnel.Tracker
@@ -73,6 +75,8 @@ func New(configuration Config, logger *slog.Logger, lifeCycles *[]lifecycle.Life
 	tracker := tunnel.NewTracker()
 	server := &Server{
 		configuration:     configuration,
+		overlayResolver:   configuration.OverlayResolver,
+		localPublicKey:    append([]byte(nil), configuration.LocalPublicKey...),
 		logger:            componentLogger,
 		localTransport:    localTransport,
 		internetTransport: internet,
