@@ -7,7 +7,7 @@ import (
 	"log/slog"
 	"net"
 	"net/http"
-	"overnode/gate/internal/lifecycle"
+	"overnode/common/pkg/lifecycle"
 	"sync"
 	"time"
 

@@ -7,7 +7,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
-	"overnode/gate/internal/lifecycle"
+	"overnode/common/pkg/lifecycle"
 	"strings"
 	"testing"
 	"time"

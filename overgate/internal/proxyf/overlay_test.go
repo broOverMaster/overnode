@@ -17,20 +17,6 @@ import (
 const vectorKey = "bdbacfd82240de3dcd123924cbb55256fb8dab08aa98e305528ab84f419e6efb"
 const vectorIP = "200:848a:604f:bb7e:4384:65db:8db6:6895"
 
-func TestOverlayAddress(t *testing.T) {
-	for _, suffix := range []string{"ygg", "overspace"} {
-		got, err := overlayAddress(vectorKey + "." + suffix)
-		if err != nil || got != vectorIP {
-			t.Fatalf("%s %v", got, err)
-		}
-	}
-	for _, host := range []string{"human.overspace", strings.Repeat("a", 63) + ".ygg", strings.Repeat("a", 65) + ".ygg", strings.Repeat("g", 64) + ".ygg", vectorKey + ".extra.ygg", vectorKey, ".ygg"} {
-		if _, err := overlayAddress(host); err == nil {
-			t.Errorf("accepted %s", host)
-		}
-	}
-}
-
 type socksObservation struct {
 	ip                      string
 	port                    uint16

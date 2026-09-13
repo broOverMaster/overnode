@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"log/slog"
 	"overnode/common/pkg/config/schema"
+	"overnode/common/pkg/lifecycle"
 	"overnode/common/pkg/logging"
 	"overnode/gate/internal/httpin"
-	"overnode/gate/internal/lifecycle"
 	"overnode/gate/internal/proxyf"
 )
 

@@ -1,4 +1,4 @@
-// Пакет lifecycle описывает сервисную часть компонентов overgate.
+// Пакет lifecycle координирует запуск и остановку сервисов OverNode.
 package lifecycle
 
 import (

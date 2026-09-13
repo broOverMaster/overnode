@@ -9,7 +9,7 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"net/url"
-	"overnode/gate/internal/lifecycle"
+	"overnode/common/pkg/lifecycle"
 	"strings"
 	"sync"
 	"time"

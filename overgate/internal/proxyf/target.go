@@ -5,6 +5,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"overnode/common/pkg/overlay"
 	"strings"
 )
 
@@ -103,7 +104,7 @@ func (server *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	case routeInternet:
 		server.forward(w, r, t)
 	case routeYgg, routeOverspace:
-		ip, err := overlayAddress(t.hostname)
+		ip, err := overlay.NormalizeAddress(t.hostname)
 		if err != nil {
 			http.Error(w, "invalid public key", 400)
 			return
@@ -112,7 +113,7 @@ func (server *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Yggstack is not configured", 503)
 			return
 		}
-		t.hostname = ip
+		t.hostname = ip.String()
 		server.forward(w, r, t)
 	}
 }
