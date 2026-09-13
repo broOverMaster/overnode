@@ -28,7 +28,7 @@
 - **Критичность:** низкая
 - **Статус:** открыта
 - **Где:** маршрут overspace в `overgate/internal/proxyf/target.go` и
-  преобразование адресов в `overgate/internal/overlay/overlay.go`.
+  преобразование адресов в `common/pkg/overlay/overlay.go`.
 
 ### Текущая область
 
