@@ -4,11 +4,10 @@ package httpin
 import (
 	"fmt"
 	"net"
-	"net/url"
 	"strconv"
-	"strings"
 
 	"overnode/common/pkg/config/schema"
+	"overnode/gate/internal/network"
 )
 
 // Config задаёт входящий слушатель и единственный адрес сайта.
@@ -40,20 +39,8 @@ func (c Config) Validate() error {
 		}
 	}
 	if c.LocalSite != "" {
-		u, err := url.Parse("http://" + c.LocalSite)
-		if err != nil || u.Host != c.LocalSite || u.User != nil || strings.ContainsAny(c.LocalSite, " /?#@\\\t\r\n") {
+		if _, _, err := network.ParseAuthority(c.LocalSite, true); err != nil {
 			return fmt.Errorf("httpin.local_site must be host:port")
-		}
-		host, port, err := net.SplitHostPort(c.LocalSite)
-		if err != nil || host == "" {
-			return fmt.Errorf("httpin.local_site must be host:port")
-		}
-		if strings.Contains(host, ":") && net.ParseIP(host) == nil {
-			return fmt.Errorf("httpin.local_site has an invalid IP address")
-		}
-		n, err := strconv.ParseUint(port, 10, 16)
-		if err != nil || n == 0 {
-			return fmt.Errorf("httpin.local_site has an invalid port")
 		}
 	}
 	return nil

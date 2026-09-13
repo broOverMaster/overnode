@@ -421,3 +421,22 @@ part of the implemented configuration examples; preserve it as local user work.
 - Gate A/B/C pass/fail/not-run results, response markers, relevant route/upstream
   records, and reasons for any pending checks.
 - `make check`, race-test and integration-test results; cleanup outcome.
+
+## Current package boundaries
+
+`overgate/internal/proxyf` is the HTTP-proxy facade: it owns configuration,
+listener lifecycle, transport construction and the policy that enables each
+route. It delegates request-target parsing and route classification to
+`proxyf/routing`, ordinary HTTP forwarding to `proxyf/forwarding`, and CONNECT
+tunnels (including upstream CONNECT and tracked connection shutdown) to
+`proxyf/tunnel`.
+
+`overgate/internal/network` owns reusable overgate parsing of `host[:port]` and
+`host:port`. It is shared by proxyf configuration, routing and httpin. It stays
+internal until another service consumes the same contract, at which point it can
+move to `common/pkg/network` without changing its API.
+
+The former Yggdrasil address conversion is in `common/pkg/overlay`; therefore
+the yggdrasil-go dependency belongs to the common module. The routing, tunnel
+and forwarding refactor preserves proxy behavior; focused and end-to-end proxyf
+tests remain its verification coverage.

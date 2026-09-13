@@ -10,62 +10,9 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"overnode/common/pkg/lifecycle"
-	"strings"
 	"testing"
 	"time"
 )
-
-func TestParseTarget(t *testing.T) {
-	for _, tc := range []struct {
-		uri, method string
-		route       route
-		host, port  string
-	}{
-		{"http://LOCAL.OVERSPACE.:81/a%2Fb?q=%2F", "GET", routeLocal, "local.overspace", "81"},
-		{"http://notlocal.overspace/", "POST", routeOverspace, "notlocal.overspace", "80"},
-		{"http://key.ygg/", "GET", routeYgg, "key.ygg", "80"},
-		{"http://sub.key.ygg/", "GET", routeYgg, "sub.key.ygg", "80"},
-		{"http://" + strings.Repeat("a", 64) + ".overspace/", "GET", routeOverspace, strings.Repeat("a", 64) + ".overspace", "80"},
-		{"http://local.overspace.example/", "GET", routeInternet, "local.overspace.example", "80"},
-		{"http://key.ygg.example/", "GET", routeInternet, "key.ygg.example", "80"},
-		{"http://overspace/", "GET", routeInternet, "overspace", "80"},
-		{"http://127.0.0.1/", "GET", routeInternet, "127.0.0.1", "80"},
-		{"http://[::1]:8081/", "GET", routeInternet, "::1", "8081"},
-		{"example.com:443", "CONNECT", routeInternet, "example.com", "443"},
-		{"[::1]:443", "CONNECT", routeInternet, "::1", "443"},
-		{"LOCAL.OVERSPACE.:443", "CONNECT", routeLocal, "local.overspace", "443"},
-	} {
-		t.Run(tc.uri, func(t *testing.T) {
-			r := &http.Request{Method: tc.method, RequestURI: tc.uri, Host: "untrusted.ygg"}
-			got, err := parseTarget(r)
-			if err != nil {
-				t.Fatal(err)
-			}
-			if got.route != tc.route || got.hostname != tc.host || got.port != tc.port {
-				t.Fatalf("unexpected target: %+v", got)
-			}
-			if got.url != nil && got.url.String() != tc.uri {
-				t.Fatalf("URL changed: %s", got.url)
-			}
-			if r.Host != "untrusted.ygg" {
-				t.Fatal("request mutated")
-			}
-		})
-	}
-}
-
-func TestInvalidTargets(t *testing.T) {
-	for _, uri := range []string{"/path", "*", "", "//host/path", "https://host/", "ftp://host/", "http:host", "http:///path", "http://u:p@host/", "http://host/#x", "http://host/#", "http://host:0/", "http://host:65536/", "http://host:/", "http://host:abc/", "http://::1:80/", "http://[abc]:80/", "http://a..ygg/", "http://.ygg/", "http://a.ygg../", "http://-a.ygg/", "http://host/%zz"} {
-		if _, err := parseTarget(&http.Request{Method: "GET", RequestURI: uri, Host: "example.com"}); err == nil {
-			t.Errorf("accepted %q", uri)
-		}
-	}
-	for _, uri := range []string{"host", "host:", "host:0", "host:65536", "host:443/path", "http://host:443", "user@host:443", "::1:443"} {
-		if _, err := parseTarget(&http.Request{Method: "CONNECT", RequestURI: uri}); err == nil {
-			t.Errorf("accepted CONNECT %q", uri)
-		}
-	}
-}
 
 func TestHandlerStatus(t *testing.T) {
 	s, err := New(Config{ListenOn: ":2080", HTTPProxy: "127.0.0.1:1"}, testLogger(), new([]lifecycle.LifeCycle))

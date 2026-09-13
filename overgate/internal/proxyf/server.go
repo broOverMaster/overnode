@@ -7,7 +7,11 @@ import (
 	"log/slog"
 	"net"
 	"net/http"
+	"net/url"
 	"overnode/common/pkg/lifecycle"
+	"overnode/gate/internal/network"
+	"overnode/gate/internal/proxyf/forwarding"
+	"overnode/gate/internal/proxyf/tunnel"
 	"sync"
 	"time"
 
@@ -21,10 +25,12 @@ type Server struct {
 	localTransport    *http.Transport
 	internetTransport *http.Transport
 	overlayTransport  *http.Transport
+	forwarder         *forwarding.Forwarder
+	tunneler          *tunnel.Tunneler
+	tunnels           *tunnel.Tracker
 	mu                sync.Mutex
 	stopping          bool
 	requests          sync.WaitGroup
-	tunnels           map[net.Conn]struct{}
 	lifetime          context.Context
 }
 
@@ -40,13 +46,14 @@ func New(configuration Config, logger *slog.Logger, lifeCycles *[]lifecycle.Life
 	if err := configuration.Validate(); err != nil {
 		return nil, err
 	}
+	upstream, _ := httpEndpointURL(configuration.HTTPProxy)
 	internet := newTransport()
-	if upstream, _ := httpEndpointURL(configuration.HTTPProxy); upstream != nil {
+	if upstream != nil {
 		internet.Proxy = http.ProxyURL(upstream)
 	}
 	overlay := newTransport()
 	if configuration.Yggstack != "" {
-		host, port, _ := authority(configuration.Yggstack, true)
+		host, port, _ := network.ParseAuthority(configuration.Yggstack, true)
 		dialer, err := proxy.SOCKS5("tcp", net.JoinHostPort(host, port), nil, &net.Dialer{Timeout: 10 * time.Second, KeepAlive: 30 * time.Second})
 		if err != nil {
 			return nil, fmt.Errorf("create SOCKS5 dialer: %w", err)
@@ -61,9 +68,27 @@ func New(configuration Config, logger *slog.Logger, lifeCycles *[]lifecycle.Life
 			return contextDialer.DialContext(ctx, network, address)
 		}
 	}
-	server := &Server{configuration: configuration, logger: logger.With("component", "proxyf"), localTransport: newTransport(), internetTransport: internet, overlayTransport: overlay, tunnels: make(map[net.Conn]struct{}), lifetime: context.Background()}
+	componentLogger := logger.With("component", "proxyf")
+	localTransport := newTransport()
+	tracker := tunnel.NewTracker()
+	server := &Server{
+		configuration:     configuration,
+		logger:            componentLogger,
+		localTransport:    localTransport,
+		internetTransport: internet,
+		overlayTransport:  overlay,
+		forwarder:         forwarding.New(httpEndpointURLOrNil(configuration.LocalSite), localTransport, internet, overlay, componentLogger),
+		tunneler:          tunnel.New(upstream, componentLogger, tracker),
+		tunnels:           tracker,
+		lifetime:          context.Background(),
+	}
 	*lifeCycles = append(*lifeCycles, server)
 	return server, nil
+}
+
+func httpEndpointURLOrNil(value string) *url.URL {
+	endpoint, _ := httpEndpointURL(value)
+	return endpoint
 }
 
 func newTransport() *http.Transport {
@@ -105,10 +130,8 @@ func (server *Server) serve(ctx context.Context, listener net.Listener) error {
 	defer func() {
 		server.mu.Lock()
 		server.stopping = true
-		for conn := range server.tunnels {
-			_ = conn.Close()
-		}
 		server.mu.Unlock()
+		server.tunnels.Close()
 		cancel()
 		_ = httpServer.Close()
 		server.requests.Wait()
